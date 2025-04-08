@@ -1,0 +1,82 @@
+{
+  "name": "crewai-ts",
+  "version": "0.1.0",
+  "description": "TypeScript port of crewAI for agent-based workflows",
+  "type": "module",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    },
+    "./flow": {
+      "import": "./dist/flow/index.js",
+      "types": "./dist/flow/index.d.ts"
+    },
+    "./flow/decorators": {
+      "import": "./dist/flow/decorators.js",
+      "types": "./dist/flow/decorators.d.ts"
+    },
+    "./cli": {
+      "import": "./dist/cli/index.js",
+      "types": "./dist/cli/index.d.ts"
+    }
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "bin": {
+    "crewai": "./bin/crewai.js"
+  },
+  "files": [
+    "dist",
+    "bin"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "test": "bun test",
+    "test:vitest": "vitest run",
+    "test:vitest:watch": "vitest",
+    "lint": "eslint --ext .ts src",
+    "format": "prettier --write 'src/**/*.ts'",
+    "cli": "node bin/crewai.js",
+    "create-flow": "node bin/crewai.js create-flow",
+    "run-flow": "node bin/crewai.js run-flow",
+    "plot-flow": "node bin/crewai.js plot-flow"
+  },
+  "keywords": [
+    "crewai",
+    "typescript",
+    "agents",
+    "llm",
+    "ai"
+  ],
+  "author": "",
+  "license": "MIT",
+  "engines": {
+    "node": ">=18.0.0",
+    "bun": ">=1.0.0"
+  },
+  "devDependencies": {
+    "@types/jest": "^29.5.14",
+    "@types/node": "^22.14.0",
+    "@types/uuid": "^10.0.0",
+    "@typescript-eslint/eslint-plugin": "^6.0.0",
+    "@typescript-eslint/parser": "^6.0.0",
+    "bun-types": "^1.2.8",
+    "eslint": "^8.0.0",
+    "expect": "^29.7.0",
+    "prettier": "^3.0.0",
+    "typescript": "^5.0.0",
+    "vitest": "^1.0.0"
+  },
+  "dependencies": {
+    "chalk": "^5.3.0",
+    "commander": "^11.1.0",
+    "gpt-tokenizer": "^2.9.0",
+    "jsdom": "^22.1.0",
+    "ora": "^7.0.1",
+    "uuid": "^11.1.0",
+    "vis-network": "^9.1.9",
+    "zod": "^3.22.0"
+  }
+}

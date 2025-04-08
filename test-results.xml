@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<testsuites name="vitest tests" tests="8" failures="8" errors="0" time="80.363">
+    <testsuite name="tests/flow/Flow.test.ts" timestamp="2025-04-08T01:45:13.476Z" hostname="Jacobs-MacBook-Pro.local" tests="8" failures="8" errors="0" skipped="0" time="80.052">
+        <testcase classname="tests/flow/Flow.test.ts" name="Flow &gt; Basic Flow Execution &gt; executes methods in order" time="10.017">
+            <failure message="Test timed out in 10000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with &quot;testTimeout&quot;." type="Error">
+Error: Test timed out in 10000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with &quot;testTimeout&quot;.
+            </failure>
+        </testcase>
+        <testcase classname="tests/flow/Flow.test.ts" name="Flow &gt; Basic Flow Execution &gt; passes results between methods" time="10.009">
+            <failure message="Test timed out in 10000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with &quot;testTimeout&quot;." type="Error">
+Error: Test timed out in 10000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with &quot;testTimeout&quot;.
+            </failure>
+        </testcase>
+        <testcase classname="tests/flow/Flow.test.ts" name="Flow &gt; Conditional Flow Execution &gt; routes to path A when condition matches" time="10.006">
+            <failure message="Test timed out in 10000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with &quot;testTimeout&quot;." type="Error">
+Error: Test timed out in 10000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with &quot;testTimeout&quot;.
+            </failure>
+        </testcase>
+        <testcase classname="tests/flow/Flow.test.ts" name="Flow &gt; Conditional Flow Execution &gt; routes to path B when condition matches" time="10.005">
+            <failure message="Test timed out in 10000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with &quot;testTimeout&quot;." type="Error">
+Error: Test timed out in 10000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with &quot;testTimeout&quot;.
+            </failure>
+        </testcase>
+        <testcase classname="tests/flow/Flow.test.ts" name="Flow &gt; Complex Conditions &gt; AND condition executes method only when all dependencies are met" time="10.002">
+            <failure message="Test timed out in 10000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with &quot;testTimeout&quot;." type="Error">
+Error: Test timed out in 10000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with &quot;testTimeout&quot;.
+            </failure>
+        </testcase>
+        <testcase classname="tests/flow/Flow.test.ts" name="Flow &gt; Error Handling &gt; catches errors and triggers error handler" time="10.005">
+            <system-err>
+Error executing method failingMethod: Error: Test error
+    at ErrorFlow.failingMethod [90m(/Users/jacob/projects/crewai-ts/[39mtests/flow/Flow.test.ts:401:15[90m)[39m
+    at ErrorFlow._executeMethod [90m(/Users/jacob/projects/crewai-ts/[39msrc/flow/Flow.ts:265:24[90m)[39m
+    at ErrorFlow._executeMethod [90m(/Users/jacob/projects/crewai-ts/[39mtests/flow/Flow.test.ts:58:18[90m)[39m
+    at ErrorFlow._executeSingleListener [90m(/Users/jacob/projects/crewai-ts/[39msrc/flow/Flow.ts:400:41[90m)[39m
+    at [90m/Users/jacob/projects/crewai-ts/[39msrc/flow/Flow.ts:330:19
+    at Array.map (&lt;anonymous&gt;)
+    at ErrorFlow._executeListeners [90m(/Users/jacob/projects/crewai-ts/[39msrc/flow/Flow.ts:329:40[90m)[39m
+    at ErrorFlow._executeMethod [90m(/Users/jacob/projects/crewai-ts/[39msrc/flow/Flow.ts:281:18[90m)[39m
+
+            </system-err>
+            <failure message="Test timed out in 10000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with &quot;testTimeout&quot;." type="Error">
+Error: Test timed out in 10000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with &quot;testTimeout&quot;.
+            </failure>
+        </testcase>
+        <testcase classname="tests/flow/Flow.test.ts" name="Flow &gt; Flow Events &gt; emits events during execution" time="10.002">
+            <failure message="Test timed out in 10000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with &quot;testTimeout&quot;." type="Error">
+Error: Test timed out in 10000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with &quot;testTimeout&quot;.
+            </failure>
+        </testcase>
+        <testcase classname="tests/flow/Flow.test.ts" name="Flow &gt; Method Result Caching &gt; caches method results" time="10.003">
+            <failure message="Test timed out in 10000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with &quot;testTimeout&quot;." type="Error">
+Error: Test timed out in 10000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with &quot;testTimeout&quot;.
+            </failure>
+        </testcase>
+    </testsuite>
+</testsuites>
