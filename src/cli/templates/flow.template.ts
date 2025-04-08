@@ -1,4 +1,10 @@
 /**
+ * Flow template for the CLI's create-flow command
+ * Performance-optimized with proper TypeScript types
+ */
+
+// Exported as a string to avoid TypeScript validation issues with template variables
+export const flowTemplate = `/**
  * {{FlowName}} - A Flow for orchestrating tasks
  * Created with CrewAI CLI
  */
@@ -62,7 +68,7 @@ export class {{FlowName}} extends Flow<{{FlowName}}State> {
       
       return this.state.results;
     } catch (error) {
-      this.state.errors.push(`Processing error: ${error.message}`);
+      this.state.errors.push(\`Processing error: \${error.message}\`);
       return STOP;
     }
   }
@@ -81,7 +87,7 @@ export class {{FlowName}} extends Flow<{{FlowName}}State> {
     this.state.progress = 100;
     
     const executionTime = (this.state.endTime - this.state.startTime) / 1000;
-    console.log(`Flow completed in ${executionTime.toFixed(2)} seconds`);
+    console.log(\`Flow completed in \${executionTime.toFixed(2)} seconds\`);
     
     return processResult;
   }
@@ -99,4 +105,5 @@ export class {{FlowName}} extends Flow<{{FlowName}}State> {
     
     return { success: false, errors: this.state.errors };
   }
-}
+}`;
+

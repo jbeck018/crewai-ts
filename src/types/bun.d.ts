@@ -30,7 +30,7 @@ declare module 'bun:test' {
   export function beforeEach(fn: () => void | Promise<void>): void;
   export function afterEach(fn: () => void | Promise<void>): void;
   export function spyOn(object: any, method: string): Mock<any>;
-  export function jest: {
+  export const jest: {
     fn<T extends (...args: any[]) => any>(implementation?: T): Mock<T>;
     spyOn(object: any, method: string): Mock<any>;
     clearAllMocks(): void;
@@ -60,6 +60,7 @@ declare var global: typeof globalThis & {
   import: (path: string) => Promise<any>;
 };
 
+// Performance-optimized process definition with complete typing
 declare var process: {
   env: Record<string, string | undefined>;
   memoryUsage: () => {
@@ -68,4 +69,14 @@ declare var process: {
     heapUsed: number;
     external: number;
   };
+  exit(code?: number): never;
+  cwd(): string;
+  // Add commonly used Node.js process properties for better type checking
+  platform: string;
+  arch: string;
+  version: string;
+  versions: Record<string, string>;
+  argv: string[];
+  pid: number;
+  uptime(): number;
 };

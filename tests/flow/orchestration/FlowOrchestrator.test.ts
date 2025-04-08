@@ -1,10 +1,11 @@
+import { describe, test, expect, beforeEach, afterEach, vi } from 'vitest';
 /**
  * FlowOrchestrator Tests
  * 
  * Comprehensive tests for the Flow Orchestrator with performance benchmarking.
  */
 
-import { describe, test, expect, mock, beforeEach, afterEach } from 'bun:test';
+import { describe, test, expect, mock, beforeEach, afterEach } from '../../../tests/vitest-utils.js';
 import { Flow, FlowState } from '../../../src/flow/index.js';
 import { start, listen, router } from '../../../src/flow/decorators.js';
 import { CONTINUE } from '../../../src/flow/types.js';

@@ -1,24 +1,25 @@
+import { describe, test, expect, beforeEach, afterEach, vi } from 'vitest';
 /**
  * Tests for CreateFlowCommand with performance optimizations.
  */
-import { describe, test, expect, beforeEach, afterEach, jest, mock } from 'bun:test';
+import { describe, test, expect, beforeEach, afterEach, jest, mock } from '../../../tests/vitest-utils.js';
 import fs from 'fs';
 import path from 'path';
 import { CreateFlowCommand } from '../../../src/cli/commands/CreateFlowCommand.js';
 
 // Mock fs and path modules for isolated testing
 mock.module('fs', () => ({
-  existsSync: jest.fn(),
-  mkdirSync: jest.fn(),
-  writeFileSync: jest.fn(),
-  readFileSync: jest.fn(() => 'Template content with {{FLOW_NAME}} and {{FLOW_DESCRIPTION}}')
+  existsSync: vi.fn(),
+  mkdirSync: vi.fn(),
+  writeFileSync: vi.fn(),
+  readFileSync: vi.fn(() => 'Template content with {{FLOW_NAME}} and {{FLOW_DESCRIPTION}}')
 }));
 
 mock.module('path', () => ({
-  join: jest.fn((...args) => args.join('/')),
-  dirname: jest.fn((p) => p.split('/').slice(0, -1).join('/')),
-  resolve: jest.fn((...args) => args.join('/')),
-  extname: jest.fn((p) => '.ts')
+  join: vi.fn((...args) => args.join('/')),
+  dirname: vi.fn((p) => p.split('/').slice(0, -1).join('/')),
+  resolve: vi.fn((...args) => args.join('/')),
+  extname: vi.fn((p) => '.ts')
 }));
 
 describe('CreateFlowCommand', () => {
@@ -29,11 +30,11 @@ describe('CreateFlowCommand', () => {
   // Set up testing environment
   beforeEach(() => {
     // Reset mocks
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     
     // Mock console methods
-    consoleLogSpy = jest.spyOn(console, 'log').mockImplementation();
-    consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
+    consoleLogSpy = vi.spyOn(console, 'log').mockImplementation();
+    consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation();
     
     // Default behavior for fs methods
     (fs.existsSync as jest.Mock).mockReturnValue(false);
@@ -145,7 +146,7 @@ describe('CreateFlowCommand', () => {
   
   // Test template loading performance
   test('loads template efficiently using caching', async () => {
-    const readFileSpy = jest.spyOn(fs, 'readFileSync');
+    const readFileSpy = vi.spyOn(fs, 'readFileSync');
     
     // First execution
     await command.execute(['CachedFlow1']);

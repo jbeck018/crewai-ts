@@ -15,7 +15,10 @@ export default defineConfig({
       },
     },
     environment: 'node',
+    // Only include the consolidated tests directory
     include: ['tests/**/*.test.ts'],
+    // Enable globals for better compatibility with different test styles
+    globals: true,
     // Optimize for CI pipelines
     reporters: ['default', 'junit'],
     outputFile: {

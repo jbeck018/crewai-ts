@@ -1,0 +1,13 @@
+# Jekyll configuration for GitHub Pages
+remote_theme: pages-themes/cayman@v0.2.0
+plugins:
+- jekyll-remote-theme
+
+# Site settings
+title: CrewAI TypeScript Documentation
+description: Documentation for the TypeScript implementation of CrewAI
+
+# Navigation
+show_downloads: true
+github:
+  repository_url: https://github.com/joaomdmoura/crewai-ts

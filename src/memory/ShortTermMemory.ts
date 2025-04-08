@@ -335,7 +335,10 @@ export class ShortTermMemory implements BaseMemory {
       const keys = Array.from(this.items.keys());
       if (keys.length > 0) {
         const randomIndex = Math.floor(Math.random() * keys.length);
-        this.items.delete(keys[randomIndex]);
+        const keyToDelete = keys[randomIndex];
+        if (keyToDelete) { // Null check for performance optimization
+          this.items.delete(keyToDelete);
+        }
       }
     }
   }

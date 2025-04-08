@@ -392,22 +392,28 @@ export class AnthropicLLM implements BaseLLM {
     for (let i = 0; i < messages.length; i++) {
       const message = messages[i];
       
-      if (message.role === 'system') {
+      // Early continue if message is undefined
+      if (!message) continue;
+      
+      const role = message.role || '';
+      const content = message.content || '';
+      
+      if (role === 'system') {
         // Collect system messages to prepend to the first user message
-        pendingSystemMessage += message.content + '\n';
-      } else if (message.role === 'user' || message.role === 'assistant') {
+        pendingSystemMessage += content + '\n';
+      } else if (role === 'user' || role === 'assistant') {
         // For user and assistant, map directly
-        if (message.role === 'user' && pendingSystemMessage && message.content) {
+        if (role === 'user' && pendingSystemMessage && content) {
           // Prepend system message to the first user message
           anthropicMessages.push({
             role: 'user',
-            content: pendingSystemMessage.trim() + '\n\n' + message.content
+            content: pendingSystemMessage.trim() + '\n\n' + content
           });
           pendingSystemMessage = ''; // Clear pending system message
         } else {
           anthropicMessages.push({
-            role: message.role === 'user' ? 'user' : 'assistant',
-            content: message.content
+            role: role === 'user' ? 'user' : 'assistant',
+            content: content
           });
         }
       }

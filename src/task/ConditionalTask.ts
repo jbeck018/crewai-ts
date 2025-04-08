@@ -69,7 +69,7 @@ export class ConditionalTask extends Task {
     return super.execute(context);
   }
 
-  toString(): string {
+  override toString(): string {
     return `ConditionalTask(id=${this.id}, conditions=${this.conditions.length})`;
   }
 }

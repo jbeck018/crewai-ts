@@ -492,8 +492,9 @@ export class FlowOrchestrator {
         node.result = result;
         node.endTime = performance.now();
         
-        // Record execution time
-        const executionTime = node.endTime - node.startTime;
+        // Record execution time with performance-optimized null check
+        const startTime = node.startTime || node.endTime; // Fallback to endTime if startTime is undefined
+        const executionTime = node.endTime - startTime;
         this.flowExecutionTimes.set(id, executionTime);
         
         // Add to completed flows
@@ -529,7 +530,7 @@ export class FlowOrchestrator {
           id,
           flow,
           error,
-          executionTime: node.endTime - node.startTime
+          executionTime: node.endTime - (node.startTime || node.endTime)
         });
         
         // Rethrow to trigger waitForAnyFlowToComplete

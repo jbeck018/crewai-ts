@@ -93,7 +93,7 @@ export class RunFlowCommand extends Command {
   /**
    * Parse command line arguments for the run-flow command
    */
-  protected parseArgs(args: string[]): { flowPath?: string; input?: string; verbose?: boolean } {
+  protected override parseArgs(args: string[]): { flowPath?: string; input?: string; verbose?: boolean } {
     if (args.length === 0) {
       return {};
     }

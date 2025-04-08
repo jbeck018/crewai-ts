@@ -220,9 +220,10 @@ export class PromptTemplate {
   
   /**
    * Get a compiled template function
+   * Performance-optimized with null safety
    */
   private getCompiledTemplate(): CompiledTemplate {
-    // Return from instance if already compiled
+    // Return from instance if already compiled - performance optimization
     if (this.compiled) {
       return this.compiled;
     }
@@ -233,8 +234,10 @@ export class PromptTemplate {
     if (this.options.cache) {
       // Use synchronous get method to avoid Promise complications
       try {
+        // Ensure we get a non-Promise synchronous result
         const cached = templateCache.get(cacheKey);
-        if (cached) {
+        if (cached && typeof cached === 'function') {
+          // Store only if it's actually a function, not a Promise
           this.compiled = cached;
           return cached;
         }
@@ -243,19 +246,20 @@ export class PromptTemplate {
       }
     }
     
-    // Compile the template
-    this.compiled = this.compileTemplate(this.template);
+    // Compile the template - explicitly typed to ensure type safety
+    const compiledTemplate = this.compileTemplate(this.template);
+    this.compiled = compiledTemplate;
     
     // Cache if enabled - use try/catch for async operations
-    if (this.options.cache) {
+    if (this.options.cache && compiledTemplate) {
       try {
-        templateCache.set(cacheKey, this.compiled);
+        templateCache.set(cacheKey, compiledTemplate);
       } catch (error) {
         // Ignore cache set errors
       }
     }
     
-    return this.compiled;
+    return compiledTemplate;
   }
   
   /**
@@ -270,9 +274,11 @@ export class PromptTemplate {
     const variables = new Set<string>();
     let match: RegExpExecArray | null;
     
-    // Collect all variable names
+    // Collect all variable names with null safety
     while ((match = variableRegex.exec(template)) !== null) {
-      variables.add(match[1]);
+      if (match[1]) { // Ensure match[1] is defined
+        variables.add(match[1]);
+      }
     }
     
     // Create compiled template function

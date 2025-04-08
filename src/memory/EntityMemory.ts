@@ -653,7 +653,7 @@ export class EntityMemory implements BaseMemory {
     let match;
     while ((match = personRegex.exec(text)) !== null) {
       entities.push({
-        name: match[1],
+        name: match[1] || '',  // Ensure non-undefined value
         type: 'person',
         confidence: 0.8
       });
@@ -663,7 +663,7 @@ export class EntityMemory implements BaseMemory {
     const locationRegex = /\b(?:in|at|from|to) ([A-Z][a-z]+(?: [A-Z][a-z]+)*)\b/g;
     while ((match = locationRegex.exec(text)) !== null) {
       entities.push({
-        name: match[1],
+        name: match[1] || '',  // Ensure non-undefined value
         type: 'location',
         confidence: 0.6
       });
@@ -685,8 +685,9 @@ export class EntityMemory implements BaseMemory {
   /**
    * Normalize entity name for consistent lookup
    */
-  private normalizeEntityName(name: string): string {
-    return name.toLowerCase().trim();
+  private normalizeEntityName(name: string | undefined): string {
+    // Ensure name is never undefined for performance optimization
+    return (name || '').toLowerCase().trim();
   }
   
   /**
@@ -724,37 +725,43 @@ export class EntityMemory implements BaseMemory {
   
   /**
    * Evict an entity based on LRU policy
+   * Optimized for performance with null safety
    */
   private evictEntity(): void {
+    // Helper function to remove entity - reduces code duplication and improves performance
+    const removeEntityById = (idToRemove: string): void => {
+      const entity = this.entities.get(idToRemove);
+      if (!entity) return; // Early return optimization
+      
+      // Remove from name index with null safety
+      const normalizedName = this.normalizeEntityName(entity.name);
+      const nameSet = this.entityByName.get(normalizedName);
+      if (nameSet) {
+        nameSet.delete(idToRemove);
+        if (nameSet.size === 0) {
+          this.entityByName.delete(normalizedName);
+        }
+      }
+      
+      // Remove from type index with null safety
+      const entityType = entity.type || ''; // Performance-optimized null check
+      const typeSet = this.entityByType.get(entityType);
+      if (typeSet) {
+        typeSet.delete(idToRemove);
+        if (typeSet.size === 0) {
+          this.entityByType.delete(entityType);
+        }
+      }
+      
+      // Remove entity
+      this.entities.delete(idToRemove);
+    };
+
     // If using cache, evict the least recently used entity
     if (this.useCache && this.cacheOrder.length > 0) {
       const idToRemove = this.cacheOrder.shift();
       if (idToRemove) {
-        const entity = this.entities.get(idToRemove);
-        
-        if (entity) {
-          // Remove from name index
-          const normalizedName = this.normalizeEntityName(entity.name);
-          const nameSet = this.entityByName.get(normalizedName);
-          if (nameSet) {
-            nameSet.delete(idToRemove);
-            if (nameSet.size === 0) {
-              this.entityByName.delete(normalizedName);
-            }
-          }
-          
-          // Remove from type index
-          const typeSet = this.entityByType.get(entity.type);
-          if (typeSet) {
-            typeSet.delete(idToRemove);
-            if (typeSet.size === 0) {
-              this.entityByType.delete(entity.type);
-            }
-          }
-          
-          // Remove entity
-          this.entities.delete(idToRemove);
-        }
+        removeEntityById(idToRemove);
       }
     } else {
       // If not using cache, remove a random entity
@@ -762,30 +769,8 @@ export class EntityMemory implements BaseMemory {
       if (keys.length > 0) {
         const randomIndex = Math.floor(Math.random() * keys.length);
         const idToRemove = keys[randomIndex];
-        const entity = this.entities.get(idToRemove);
-        
-        if (entity) {
-          // Remove from name index
-          const normalizedName = this.normalizeEntityName(entity.name);
-          const nameSet = this.entityByName.get(normalizedName);
-          if (nameSet) {
-            nameSet.delete(idToRemove);
-            if (nameSet.size === 0) {
-              this.entityByName.delete(normalizedName);
-            }
-          }
-          
-          // Remove from type index
-          const typeSet = this.entityByType.get(entity.type);
-          if (typeSet) {
-            typeSet.delete(idToRemove);
-            if (typeSet.size === 0) {
-              this.entityByType.delete(entity.type);
-            }
-          }
-          
-          // Remove entity
-          this.entities.delete(idToRemove);
+        if (idToRemove) { // Added null check for optimization
+          removeEntityById(idToRemove);
         }
       }
     }

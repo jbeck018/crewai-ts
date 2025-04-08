@@ -4,7 +4,7 @@
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,
     "strictPropertyInitialization": false,
-    "suppressImplicitAnyIndexErrors": true,
+    "rootDir": "..",
     "noImplicitAny": false,
     "noImplicitThis": false,
     "useUnknownInCatchVariables": false,

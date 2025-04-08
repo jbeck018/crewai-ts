@@ -1,7 +1,8 @@
+import { describe, test, expect, beforeEach, afterEach, vi } from 'vitest';
 /**
  * Tests for RunFlowCommand with performance optimizations.
  */
-import { describe, test, expect, beforeEach, afterEach, jest, mock } from 'bun:test';
+import { describe, test, expect, beforeEach, afterEach, jest, mock } from '../../../tests/vitest-utils.js';
 import fs from 'fs';
 import path from 'path';
 import { RunFlowCommand } from '../../../src/cli/commands/RunFlowCommand.js';
@@ -9,16 +10,16 @@ import { Flow } from '../../../src/flow/Flow.js';
 
 // Mock filesystem operations for isolated testing
 mock.module('fs', () => ({
-  existsSync: jest.fn(() => true),
-  readFileSync: jest.fn()
+  existsSync: vi.fn(() => true),
+  readFileSync: vi.fn()
 }));
 
 mock.module('path', () => ({
-  join: jest.fn((...args) => args.join('/')),
-  resolve: jest.fn((...args) => args.join('/')),
-  dirname: jest.fn((p) => p.split('/').slice(0, -1).join('/')),
-  extname: jest.fn((p) => '.ts'),
-  isAbsolute: jest.fn((p) => p.startsWith('/'))
+  join: vi.fn((...args) => args.join('/')),
+  resolve: vi.fn((...args) => args.join('/')),
+  dirname: vi.fn((p) => p.split('/').slice(0, -1).join('/')),
+  extname: vi.fn((p) => '.ts'),
+  isAbsolute: vi.fn((p) => p.startsWith('/'))
 }));
 
 // Mock dynamic import for testing
@@ -28,12 +29,12 @@ const mockFlow = {
       super({ initialState: {} });
     }
     
-    execute = jest.fn().mockResolvedValue({ result: 'success' })
+    execute = vi.fn().mockResolvedValue({ result: 'success' })
   }
 };
 
 // Create a mock implementation for dynamic import
-global.import = jest.fn().mockResolvedValue(mockFlow);
+global.import = vi.fn().mockResolvedValue(mockFlow);
 
 describe('RunFlowCommand', () => {
   let command: RunFlowCommand;
@@ -44,13 +45,13 @@ describe('RunFlowCommand', () => {
   
   beforeEach(() => {
     // Reset mocks
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     
     // Mock console methods
-    consoleLogSpy = jest.spyOn(console, 'log').mockImplementation();
-    consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
-    consoleTimeSpy = jest.spyOn(console, 'time').mockImplementation();
-    consoleTimeEndSpy = jest.spyOn(console, 'timeEnd').mockImplementation();
+    consoleLogSpy = vi.spyOn(console, 'log').mockImplementation();
+    consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation();
+    consoleTimeSpy = vi.spyOn(console, 'time').mockImplementation();
+    consoleTimeEndSpy = vi.spyOn(console, 'timeEnd').mockImplementation();
     
     // Default behavior
     (fs.existsSync as jest.Mock).mockReturnValue(true);
@@ -155,7 +156,7 @@ describe('RunFlowCommand', () => {
           super({ initialState: {} });
         }
         
-        execute = jest.fn().mockRejectedValue(new Error('Flow execution error'))
+        execute = vi.fn().mockRejectedValue(new Error('Flow execution error'))
       }
     };
     

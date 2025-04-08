@@ -170,7 +170,8 @@ export class TokenCounter {
    * Get the appropriate tokenizer for a model
    */
   private getTokenizer(model: ModelType): (text: string) => number {
-    return this.tokenizers[model] || this.tokenizers['general'];
+    // Ensure we always return a valid function with null safety
+    return this.tokenizers[model] || this.tokenizers['general'] || ((text: string) => Math.ceil(text.length / 4));
   }
   
   /**

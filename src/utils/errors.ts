@@ -31,7 +31,7 @@ export class CrewAIError extends Error {
   /**
    * Original error if this is a wrapped error
    */
-  public cause?: Error;
+  public override cause?: Error;
   
   /**
    * Create a new CrewAIError instance

@@ -1,7 +1,8 @@
+import { describe, test, expect, beforeEach, afterEach, vi } from 'vitest';
 /**
  * Tests for PlotFlowCommand with performance optimizations.
  */
-import { describe, test, expect, beforeEach, afterEach, jest, mock } from 'bun:test';
+import { describe, test, expect, beforeEach, afterEach, jest, mock } from '../../../tests/vitest-utils.js';
 import fs from 'fs';
 import path from 'path';
 import { PlotFlowCommand } from '../../../src/cli/commands/PlotFlowCommand.js';
@@ -9,23 +10,23 @@ import { Flow } from '../../../src/flow/Flow.js';
 
 // Mock filesystem operations for isolated testing
 mock.module('fs', () => ({
-  existsSync: jest.fn(() => true),
-  mkdirSync: jest.fn(),
-  writeFileSync: jest.fn(),
-  readFileSync: jest.fn()
+  existsSync: vi.fn(() => true),
+  mkdirSync: vi.fn(),
+  writeFileSync: vi.fn(),
+  readFileSync: vi.fn()
 }));
 
 mock.module('path', () => ({
-  join: jest.fn((...args) => args.join('/')),
-  resolve: jest.fn((...args) => args.join('/')),
-  dirname: jest.fn((p) => p.split('/').slice(0, -1).join('/')),
-  basename: jest.fn((p) => p.split('/').pop() || ''),
-  extname: jest.fn((p) => '.ts'),
-  isAbsolute: jest.fn((p) => p.startsWith('/'))
+  join: vi.fn((...args) => args.join('/')),
+  resolve: vi.fn((...args) => args.join('/')),
+  dirname: vi.fn((p) => p.split('/').slice(0, -1).join('/')),
+  basename: vi.fn((p) => p.split('/').pop() || ''),
+  extname: vi.fn((p) => '.ts'),
+  isAbsolute: vi.fn((p) => p.startsWith('/'))
 }));
 
 // Mock Flow Visualizer functionality
-const mockPlotFlow = jest.fn().mockResolvedValue('/path/to/visualization.html');
+const mockPlotFlow = vi.fn().mockResolvedValue('/path/to/visualization.html');
 mock.module('../../../src/flow/visualization/FlowVisualizer.js', () => ({
   plotFlow: mockPlotFlow
 }));
@@ -40,7 +41,7 @@ const mockFlow = {
 };
 
 // Create a mock implementation for dynamic import
-global.import = jest.fn().mockResolvedValue(mockFlow);
+global.import = vi.fn().mockResolvedValue(mockFlow);
 
 describe('PlotFlowCommand', () => {
   let command: PlotFlowCommand;
@@ -51,13 +52,13 @@ describe('PlotFlowCommand', () => {
   
   beforeEach(() => {
     // Reset mocks
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     
     // Mock console methods
-    consoleLogSpy = jest.spyOn(console, 'log').mockImplementation();
-    consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
-    consoleTimeSpy = jest.spyOn(console, 'time').mockImplementation();
-    consoleTimeEndSpy = jest.spyOn(console, 'timeEnd').mockImplementation();
+    consoleLogSpy = vi.spyOn(console, 'log').mockImplementation();
+    consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation();
+    consoleTimeSpy = vi.spyOn(console, 'time').mockImplementation();
+    consoleTimeEndSpy = vi.spyOn(console, 'timeEnd').mockImplementation();
     
     // Default behavior
     (fs.existsSync as jest.Mock).mockReturnValue(true);
@@ -175,14 +176,14 @@ describe('PlotFlowCommand', () => {
     // Setup a mock implementation that tracks cache access
     let cacheHit = false;
     const originalResolveFlowPath = command['resolveFlowPath'];
-    command['resolveFlowPath'] = jest.fn(originalResolveFlowPath);
-    command['getCachedVisualization'] = jest.fn(() => {
+    command['resolveFlowPath'] = vi.fn(originalResolveFlowPath);
+    command['getCachedVisualization'] = vi.fn(() => {
       cacheHit = true;
       return '/path/to/cached/viz.html';
     });
     
     // Mock that cache exists
-    command['hasCachedVisualization'] = jest.fn().mockReturnValue(true);
+    command['hasCachedVisualization'] = vi.fn().mockReturnValue(true);
     
     await command.execute(['MyFlow', '--useCache']);
     
@@ -199,7 +200,7 @@ describe('PlotFlowCommand', () => {
   // Test force refresh option
   test('ignores cache when forceRefresh is true', async () => {
     // Setup mock cache
-    command['hasCachedVisualization'] = jest.fn().mockReturnValue(true);
+    command['hasCachedVisualization'] = vi.fn().mockReturnValue(true);
     
     await command.execute(['MyFlow', '--forceRefresh']);
     
@@ -210,7 +211,7 @@ describe('PlotFlowCommand', () => {
   // Test memory optimization
   test('optimizes memory usage during visualization', async () => {
     // Create a memory usage spy
-    const memoryUsageSpy = jest.spyOn(process, 'memoryUsage');
+    const memoryUsageSpy = vi.spyOn(process, 'memoryUsage');
     
     await command.execute(['MyFlow']);
     
@@ -222,7 +223,7 @@ describe('PlotFlowCommand', () => {
   
   // Test optimized imports
   test('uses dynamic imports for better performance', async () => {
-    const dynamicImportSpy = jest.spyOn(global, 'import');
+    const dynamicImportSpy = vi.spyOn(global, 'import');
     
     await command.execute(['MyFlow']);
     

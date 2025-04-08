@@ -67,6 +67,7 @@
     "expect": "^29.7.0",
     "prettier": "^3.0.0",
     "typescript": "^5.0.0",
+    "vis-network": "^9.1.9",
     "vitest": "^1.0.0"
   },
   "dependencies": {
@@ -76,7 +77,6 @@
     "jsdom": "^22.1.0",
     "ora": "^7.0.1",
     "uuid": "^11.1.0",
-    "vis-network": "^9.1.9",
     "zod": "^3.22.0"
   }
 }

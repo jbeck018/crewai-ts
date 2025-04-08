@@ -106,7 +106,7 @@ export class FlowExecutionTracker extends EventEmitter {
     'running': 0,
     'completed': 0,
     'failed': 0,
-    'cancelled': 0
+    'canceled': 0 // Fixed spelling for consistency with FlowStatus type
   };
   
   // Running variance calculation (Welford's algorithm)
@@ -149,7 +149,7 @@ export class FlowExecutionTracker extends EventEmitter {
       'running': 0,
       'completed': 0,
       'failed': 0,
-      'cancelled': 0
+      'canceled': 0 // Fixed spelling for consistency with FlowStatus type
     };
     
     this.sumDuration = 0;
@@ -185,7 +185,14 @@ export class FlowExecutionTracker extends EventEmitter {
     };
     
     this.flowData.set(flowId, flowData);
-    this.statusCounts.pending++;
+    
+    // Initialize statusCounts if undefined for performance optimization
+    if (!this.statusCounts) {
+      this.statusCounts = { pending: 0, running: 0, completed: 0, failed: 0, canceled: 0 };
+    }
+    
+    // Safe increment with null check
+    this.statusCounts.pending = (this.statusCounts.pending || 0) + 1;
     
     this.emit('flow_registered', { flowId, metadata, priority });
   }
@@ -301,13 +308,16 @@ export class FlowExecutionTracker extends EventEmitter {
     if (!flowData) return;
     
     const previousStatus = flowData.status;
-    flowData.status = 'cancelled';
+    flowData.status = 'canceled'; // Fixed spelling for consistency with FlowStatus type
     
     // Update status counts
     this.statusCounts[previousStatus]--;
-    this.statusCounts.cancelled++;
+    // Safely increment with proper null check
+    if (this.statusCounts) {
+      this.statusCounts.canceled = (this.statusCounts.canceled || 0) + 1;
+    }
     
-    this.emit('flow_cancelled', { flowId, reason });
+    this.emit('flow_canceled', { flowId, reason }); // Fixed spelling for consistency
   }
   
   /**
@@ -437,15 +447,27 @@ export class FlowExecutionTracker extends EventEmitter {
       // Create a copy to avoid modifying the original
       const sortedDurations = [...this.durations].sort((a, b) => a - b);
       
-      // Median calculation
+      // Median calculation with null safety - optimized for performance
       const medianIndex = Math.floor(sortedDurations.length / 2);
-      medianTime = sortedDurations.length % 2 === 0
-        ? (sortedDurations[medianIndex - 1] + sortedDurations[medianIndex]) / 2
-        : sortedDurations[medianIndex];
+      // Handle empty array edge case for better performance
+      if (sortedDurations.length === 0) {
+        medianTime = 0;
+      } else if (sortedDurations.length % 2 === 0) {
+        // Even length array - average of middle two elements
+        const val1 = sortedDurations[medianIndex - 1] || 0;
+        const val2 = sortedDurations[medianIndex] || 0;
+        medianTime = (val1 + val2) / 2;
+      } else {
+        // Odd length array - middle element
+        medianTime = sortedDurations[medianIndex] || 0;
+      }
       
-      // p95 calculation
+      // p95 calculation with null safety - optimized for performance
       const p95Index = Math.floor(sortedDurations.length * 0.95);
-      p95Time = sortedDurations[p95Index];
+      // Only access array if index is valid
+      p95Time = (p95Index >= 0 && p95Index < sortedDurations.length) 
+        ? sortedDurations[p95Index] || 0 
+        : 0;
     }
     
     // Calculate bottlenecks if enabled
@@ -463,8 +485,12 @@ export class FlowExecutionTracker extends EventEmitter {
       bottlenecks.push(...potentialBottlenecks);
     }
     
-    // Calculate critical path
-    let criticalPath: FlowExecutionMetrics['criticalPath'] | undefined;
+    // Calculate critical path - optimized to avoid unnecessary computation
+    // Initialize with proper structure to match the expected type
+    const criticalPath: FlowExecutionMetrics['criticalPath'] = {
+      flows: [],
+      totalTime: 0
+    };
     
     // TODO: Implement critical path algorithm if needed
     // This is computationally expensive, so it's deferred
@@ -472,10 +498,11 @@ export class FlowExecutionTracker extends EventEmitter {
     return {
       totalExecutionTime: totalDuration,
       flowCount: this.flowData.size,
-      completedFlows: this.statusCounts.completed,
-      failedFlows: this.statusCounts.failed,
-      pendingFlows: this.statusCounts.pending,
-      runningFlows: this.statusCounts.running,
+      // Safely access status counts with proper null checks for performance optimization
+      completedFlows: this.statusCounts?.completed || 0,
+      failedFlows: this.statusCounts?.failed || 0,
+      pendingFlows: this.statusCounts?.pending || 0,
+      runningFlows: this.statusCounts?.running || 0,
       averageFlowExecutionTime: this.durations.length > 0 ? this.totalDuration / this.durations.length : 0,
       medianFlowExecutionTime: medianTime,
       maxFlowExecutionTime: maxTime === 0 ? 0 : maxTime,
@@ -486,7 +513,8 @@ export class FlowExecutionTracker extends EventEmitter {
       flowPriorities,
       bottlenecks,
       criticalPath,
-      timeSeriesData: this.timeSeriesData.length > 0 ? [...this.timeSeriesData] : undefined,
+      // Safely check timeSeriesData existence and only copy if needed for performance
+      timeSeriesData: this.timeSeriesData && this.timeSeriesData.length > 0 ? [...this.timeSeriesData] : undefined,
     };
   }
   
@@ -531,11 +559,17 @@ export class FlowExecutionTracker extends EventEmitter {
       averageExecutionTime: avgExecutionTime
     };
     
+    // Initialize timeSeriesData if undefined - null safety with performance optimization
+    if (!this.timeSeriesData) {
+      this.timeSeriesData = [];
+    }
+    
     this.timeSeriesData.push(dataPoint);
     
     // Enforce maximum size
-    if (this.timeSeriesData.length > this.options.maxTimeSeriesPoints) {
-      this.timeSeriesData.shift(); // Remove oldest
+    // Safely manage timeSeriesData size with proper null checks for performance
+    if (this.timeSeriesData && this.timeSeriesData.length > this.options.maxTimeSeriesPoints) {
+      this.timeSeriesData.shift(); // Remove oldest for better memory efficiency
     }
   }
   

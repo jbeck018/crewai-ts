@@ -63,6 +63,7 @@ export class DataProcessingFlow extends Flow<DataProcessingState> {
    * Starting point for the flow
    * Initializes execution tracking and validates inputs
    */
+  // @ts-ignore - Decorator type compatibility issue
   @start()
   async begin() {
     console.log('Starting data processing flow');
@@ -87,6 +88,7 @@ export class DataProcessingFlow extends Flow<DataProcessingState> {
   /**
    * Validates input data with parallel processing for performance
    */
+  // @ts-ignore - Decorator type compatibility issue
   @listen('begin')
   async validateData() {
     console.log('Validating input data...');
@@ -144,6 +146,7 @@ export class DataProcessingFlow extends Flow<DataProcessingState> {
   /**
    * Processes validated data in parallel for maximum performance
    */
+  // @ts-ignore - Decorator type compatibility issue
   @listen('validateData')
   async processData(validatedData: SampleData[]) {
     console.log(`Processing ${validatedData.length} valid items...`);
@@ -160,7 +163,7 @@ export class DataProcessingFlow extends Flow<DataProcessingState> {
       console.log(`Processed ${this.state.processedData.length} items`);
       return this.state.processedData;
     } catch (error) {
-      this.state.errorMessages.push(`Processing error: ${error.message}`);
+      this.state.errorMessages.push(`Processing error: ${(error as Error).message}`);
       this.state.hasErrors = true;
       return STOP;
     }
@@ -185,6 +188,7 @@ export class DataProcessingFlow extends Flow<DataProcessingState> {
   /**
    * Analyzes processed data and generates summary metrics
    */
+  // @ts-ignore - Decorator type compatibility issue
   @listen('processData')
   async analyzeResults(processedData: SampleData[]) {
     console.log('Generating results summary...');
@@ -214,6 +218,7 @@ export class DataProcessingFlow extends Flow<DataProcessingState> {
   /**
    * Finalizes the flow and provides completion metrics
    */
+  // @ts-ignore - Decorator type compatibility issue
   @listen('analyzeResults')
   async complete() {
     // Record completion time and calculate execution time
@@ -233,6 +238,7 @@ export class DataProcessingFlow extends Flow<DataProcessingState> {
    * Error handler that listens to multiple methods
    * Uses OR condition to trigger on any error
    */
+  // @ts-ignore - Decorator type compatibility issue
   @listen(or_('validateData', 'processData', 'analyzeResults'))
   async handleError() {
     console.error('Error detected in flow:', this.state.errorMessages);

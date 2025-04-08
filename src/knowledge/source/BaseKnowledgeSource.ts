@@ -294,9 +294,13 @@ export abstract class BaseKnowledgeSource {
     // Recombine headings with their content
     const semanticSections: string[] = [];
     for (let i = 0; i < sections.length; i++) {
-      const heading = i > 0 ? matches[i - 1] : "";
-      const content = sections[i].trim();
-      if (!content) continue;
+      // Get heading with proper null safety - optimized for performance
+      // Only access matches array if index is valid to avoid unnecessary null checks
+      const heading = (i > 0 && i - 1 < matches.length) ? matches[i - 1] || "" : "";
+      
+      // Use optional chaining for potential undefined sections with fallback
+      const content = sections[i]?.trim() || "";
+      if (!content) continue; // Skip empty sections for better performance
       
       semanticSections.push(`${heading}\n\n${content}`);
     }

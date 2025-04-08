@@ -72,7 +72,7 @@ export class PlotFlowCommand extends Command {
   /**
    * Parse command line arguments for the plot-flow command
    */
-  protected parseArgs(args: string[]): { flowPath?: string; output?: string; filename?: string } {
+  protected override parseArgs(args: string[]): { flowPath?: string; output?: string; filename?: string } {
     if (args.length === 0) {
       return {};
     }

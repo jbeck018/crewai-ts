@@ -16,13 +16,13 @@ export class CreateFlowCommand extends Command {
     'create-flow UserOnboardingFlow --with-example'
   ];
 
-  async execute(args: string[]): Promise<void> {
+  override async execute(args: string[]): Promise<void> {
     const parsedArgs = this.parseArgs(args);
     
     if (!parsedArgs.flowName) {
       console.error('Error: Flow name is required');
       this.showHelp();
-      process.exit(1);
+      process.exit?.(1);
     }
 
     try {
@@ -31,7 +31,7 @@ export class CreateFlowCommand extends Command {
       
       // Prepare the output directory
       const outputDir = parsedArgs.path || './src/flows';
-      const outputPath = path.resolve(process.cwd(), outputDir);
+      const outputPath = path.resolve(process.cwd?.() || '', outputDir);
       
       // Create directory if it doesn't exist
       if (!fs.existsSync(outputPath)) {
@@ -44,7 +44,7 @@ export class CreateFlowCommand extends Command {
       // Check if file already exists to avoid overwriting
       if (fs.existsSync(flowFilePath)) {
         console.error(`Error: Flow file already exists at ${flowFilePath}`);
-        process.exit(1);
+        process.exit?.(1);
       }
       
       // Generate the flow file content
@@ -62,14 +62,14 @@ export class CreateFlowCommand extends Command {
       
     } catch (error) {
       console.error('Error creating flow file:', error);
-      process.exit(1);
+      process.exit?.(1);
     }
   }
 
   /**
    * Parse command line arguments for the create-flow command
    */
-  protected parseArgs(args: string[]): { flowName?: string; path?: string; withExample?: boolean } {
+  protected override parseArgs(args: string[]): { flowName?: string; path?: string; withExample?: boolean } {
     if (args.length === 0) {
       return {};
     }
@@ -159,7 +159,7 @@ export class ${flowName} extends Flow<${flowName}State> {
    */
   private getExampleFlowTemplate(flowName: string): string {
     return `/**
- * ${flowName} - A detailed example flow showing various patterns.
+ * \${flowName} - A detailed example flow showing various patterns.
  */
 import { Flow, FlowState } from 'crewai-ts/flow';
 import { start, listen, router, and_, or_ } from 'crewai-ts/flow/decorators';
@@ -284,7 +284,7 @@ export class ${flowName} extends Flow<${flowName}State> {
     // Update progress
     this.state.progress = 90;
     
-    console.log(`Generated ${this.state.results.length} results`);
+    console.log(\`Generated \${this.state.results.length} results\`);
     return this.state.results;
   }
   
@@ -303,8 +303,8 @@ export class ${flowName} extends Flow<${flowName}State> {
     
     // Calculate execution time
     const executionTime = (this.state.endTime - this.state.startTime) / 1000;
-    console.log(`Flow completed in ${executionTime.toFixed(2)} seconds`);
-    console.log(`Generated ${results.length} results`);
+    console.log(\`Flow completed in \${executionTime.toFixed(2)} seconds\`);
+    console.log(\`Generated \${results.length} results\`);
     
     // Signal flow completion
     return STOP;

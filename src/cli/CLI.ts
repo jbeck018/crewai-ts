@@ -74,16 +74,16 @@ export class CLI {
     const commandName = cmdArgs[0];
     const commandArgs = cmdArgs.slice(1);
     
-    // Check if the command exists directly or via an alias
+    // Check if the command exists directly or via an alias with optimized type handling
     let resolvedCommandName = commandName;
-    if (this.aliases.has(commandName)) {
+    if (commandName && this.aliases.has(commandName)) {
       const aliasTarget = this.aliases.get(commandName);
       if (aliasTarget) {
         resolvedCommandName = aliasTarget;
       }
     }
     
-    if (this.commands.has(resolvedCommandName)) {
+    if (resolvedCommandName && this.commands.has(resolvedCommandName)) {
       try {
         const command = this.commands.get(resolvedCommandName);
         

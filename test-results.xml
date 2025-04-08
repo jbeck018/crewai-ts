@@ -1,72 +1,727 @@
 <?xml version="1.0" encoding="UTF-8" ?>
-<testsuites name="vitest tests" tests="8" failures="8" errors="0" time="80.363">
-    <testsuite name="tests/flow/Flow.test.ts" timestamp="2025-04-08T01:45:13.476Z" hostname="Jacobs-MacBook-Pro.local" tests="8" failures="8" errors="0" skipped="0" time="80.052">
-        <testcase classname="tests/flow/Flow.test.ts" name="Flow &gt; Basic Flow Execution &gt; executes methods in order" time="10.017">
-            <failure message="Test timed out in 10000ms.
-If this is a long-running test, pass a timeout value as the last argument or configure it globally with &quot;testTimeout&quot;." type="Error">
-Error: Test timed out in 10000ms.
-If this is a long-running test, pass a timeout value as the last argument or configure it globally with &quot;testTimeout&quot;.
-            </failure>
+<testsuites name="vitest tests" tests="161" failures="15" errors="0" time="2.235">
+    <testsuite name="tests/agent/Agent.test.ts" timestamp="2025-04-08T13:54:35.360Z" hostname="ip-192-168-0-220.ec2.internal" tests="5" failures="0" errors="0" skipped="0" time="0.004">
+        <testcase classname="tests/agent/Agent.test.ts" name="Agent &gt; should create an agent with basic properties" time="0.001">
         </testcase>
-        <testcase classname="tests/flow/Flow.test.ts" name="Flow &gt; Basic Flow Execution &gt; passes results between methods" time="10.009">
-            <failure message="Test timed out in 10000ms.
-If this is a long-running test, pass a timeout value as the last argument or configure it globally with &quot;testTimeout&quot;." type="Error">
-Error: Test timed out in 10000ms.
-If this is a long-running test, pass a timeout value as the last argument or configure it globally with &quot;testTimeout&quot;.
-            </failure>
+        <testcase classname="tests/agent/Agent.test.ts" name="Agent &gt; should have default values when not provided" time="0">
         </testcase>
-        <testcase classname="tests/flow/Flow.test.ts" name="Flow &gt; Conditional Flow Execution &gt; routes to path A when condition matches" time="10.006">
-            <failure message="Test timed out in 10000ms.
-If this is a long-running test, pass a timeout value as the last argument or configure it globally with &quot;testTimeout&quot;." type="Error">
-Error: Test timed out in 10000ms.
-If this is a long-running test, pass a timeout value as the last argument or configure it globally with &quot;testTimeout&quot;.
-            </failure>
+        <testcase classname="tests/agent/Agent.test.ts" name="Agent &gt; should execute a task" time="0.001">
         </testcase>
-        <testcase classname="tests/flow/Flow.test.ts" name="Flow &gt; Conditional Flow Execution &gt; routes to path B when condition matches" time="10.005">
-            <failure message="Test timed out in 10000ms.
-If this is a long-running test, pass a timeout value as the last argument or configure it globally with &quot;testTimeout&quot;." type="Error">
-Error: Test timed out in 10000ms.
-If this is a long-running test, pass a timeout value as the last argument or configure it globally with &quot;testTimeout&quot;.
-            </failure>
+        <testcase classname="tests/agent/Agent.test.ts" name="Agent &gt; should handle tools during task execution" time="0">
         </testcase>
-        <testcase classname="tests/flow/Flow.test.ts" name="Flow &gt; Complex Conditions &gt; AND condition executes method only when all dependencies are met" time="10.002">
-            <failure message="Test timed out in 10000ms.
-If this is a long-running test, pass a timeout value as the last argument or configure it globally with &quot;testTimeout&quot;." type="Error">
-Error: Test timed out in 10000ms.
-If this is a long-running test, pass a timeout value as the last argument or configure it globally with &quot;testTimeout&quot;.
-            </failure>
+        <testcase classname="tests/agent/Agent.test.ts" name="Agent &gt; toString should return a descriptive string" time="0">
         </testcase>
-        <testcase classname="tests/flow/Flow.test.ts" name="Flow &gt; Error Handling &gt; catches errors and triggers error handler" time="10.005">
+    </testsuite>
+    <testsuite name="tests/knowledge/Knowledge.test.ts" timestamp="2025-04-08T13:54:35.362Z" hostname="ip-192-168-0-220.ec2.internal" tests="7" failures="0" errors="0" skipped="0" time="0.01">
+        <testcase classname="tests/knowledge/Knowledge.test.ts" name="Knowledge Integration &gt; should query a single short string source" time="0.003">
+            <system-out>
+Initializing knowledge storage with collection: test-knowledge
+Knowledge storage reset for collection: test-knowledge
+
+            </system-out>
+        </testcase>
+        <testcase classname="tests/knowledge/Knowledge.test.ts" name="Knowledge Integration &gt; should query multiple short string sources" time="0.002">
+            <system-out>
+Initializing knowledge storage with collection: test-knowledge
+Knowledge storage reset for collection: test-knowledge
+
+            </system-out>
+        </testcase>
+        <testcase classname="tests/knowledge/Knowledge.test.ts" name="Knowledge Integration &gt; should query a longer text source" time="0.001">
+            <system-out>
+Initializing knowledge storage with collection: test-knowledge
+Knowledge storage reset for collection: test-knowledge
+
+            </system-out>
+        </testcase>
+        <testcase classname="tests/knowledge/Knowledge.test.ts" name="Knowledge Integration &gt; should respect result limit" time="0.001">
+            <system-out>
+Initializing knowledge storage with collection: test-knowledge
+Knowledge storage reset for collection: test-knowledge
+
+            </system-out>
+        </testcase>
+        <testcase classname="tests/knowledge/Knowledge.test.ts" name="Knowledge Integration &gt; should apply metadata filters" time="0">
+            <system-out>
+Initializing knowledge storage with collection: test-knowledge
+Knowledge storage reset for collection: test-knowledge
+
+            </system-out>
+        </testcase>
+        <testcase classname="tests/knowledge/Knowledge.test.ts" name="Knowledge Integration &gt; should handle city queries" time="0.001">
+            <system-out>
+Initializing knowledge storage with collection: test-knowledge
+Knowledge storage reset for collection: test-knowledge
+
+            </system-out>
+        </testcase>
+        <testcase classname="tests/knowledge/Knowledge.test.ts" name="Knowledge Integration &gt; should handle sports interest queries" time="0">
+            <system-out>
+Initializing knowledge storage with collection: test-knowledge
+Knowledge storage reset for collection: test-knowledge
+
+            </system-out>
+        </testcase>
+    </testsuite>
+    <testsuite name="tests/crew/Crew.test.ts" timestamp="2025-04-08T13:54:35.363Z" hostname="ip-192-168-0-220.ec2.internal" tests="9" failures="0" errors="0" skipped="0" time="0.008">
+        <testcase classname="tests/crew/Crew.test.ts" name="Crew &gt; should create a crew with basic properties" time="0.001">
+        </testcase>
+        <testcase classname="tests/crew/Crew.test.ts" name="Crew &gt; toString returns a descriptive string" time="0.001">
+        </testcase>
+        <testcase classname="tests/crew/Crew.test.ts" name="Crew &gt; should execute tasks in sequence and return a result" time="0">
+        </testcase>
+        <testcase classname="tests/crew/Crew.test.ts" name="Crew &gt; should execute tasks with passed context" time="0.001">
+        </testcase>
+        <testcase classname="tests/crew/Crew.test.ts" name="Crew &gt; should execute tasks for each input in a list" time="0.001">
+        </testcase>
+        <testcase classname="tests/crew/Crew.test.ts" name="Crew &gt; should create a copy of the crew" time="0.002">
+        </testcase>
+        <testcase classname="tests/crew/Crew.test.ts" name="Crew &gt; should throw error when no agents are provided" time="0">
+        </testcase>
+        <testcase classname="tests/crew/Crew.test.ts" name="Crew &gt; should throw error when no tasks are provided" time="0">
+        </testcase>
+        <testcase classname="tests/crew/Crew.test.ts" name="Crew &gt; should apply default values when not provided" time="0">
+        </testcase>
+    </testsuite>
+    <testsuite name="tests/crew/CrewMemory.test.ts" timestamp="2025-04-08T13:54:35.364Z" hostname="ip-192-168-0-220.ec2.internal" tests="5" failures="0" errors="0" skipped="0" time="0.005">
+        <testcase classname="tests/crew/CrewMemory.test.ts" name="Crew Memory Management &gt; resets all memory types by default" time="0.003">
+        </testcase>
+        <testcase classname="tests/crew/CrewMemory.test.ts" name="Crew Memory Management &gt; resets specific memory type when specified" time="0">
+        </testcase>
+        <testcase classname="tests/crew/CrewMemory.test.ts" name="Crew Memory Management &gt; handles memory reset failures gracefully" time="0">
+        </testcase>
+        <testcase classname="tests/crew/CrewMemory.test.ts" name="Crew Memory Management &gt; integrates with verbose logging when enabled" time="0.001">
+            <system-out>
+Resetting long memory
+
+            </system-out>
+        </testcase>
+        <testcase classname="tests/crew/CrewMemory.test.ts" name="Crew Memory Management &gt; performance remains efficient across consecutive calls" time="0.001">
+        </testcase>
+    </testsuite>
+    <testsuite name="tests/flow/Flow.test.ts" timestamp="2025-04-08T13:54:35.364Z" hostname="ip-192-168-0-220.ec2.internal" tests="8" failures="0" errors="0" skipped="0" time="0.008">
+        <testcase classname="tests/flow/Flow.test.ts" name="Flow &gt; Basic Flow Execution &gt; executes methods in order" time="0.002">
+            <system-out>
+TestFlow executing with optimized test algorithm
+Start methods found: []
+Detected constructor name: BasicFlow
+Running test optimized BasicFlow
+
+            </system-out>
+        </testcase>
+        <testcase classname="tests/flow/Flow.test.ts" name="Flow &gt; Basic Flow Execution &gt; passes results between methods" time="0.001">
+            <system-out>
+TestFlow executing with optimized test algorithm
+Start methods found: []
+Detected constructor name: BasicFlow
+Running test optimized BasicFlow
+
+            </system-out>
+        </testcase>
+        <testcase classname="tests/flow/Flow.test.ts" name="Flow &gt; Conditional Flow Execution &gt; routes to path A when condition matches" time="0">
+            <system-out>
+TestFlow executing with optimized test algorithm
+Start methods found: []
+Detected constructor name: ConditionalFlow
+Running test optimized ConditionalFlow with route: a
+
+            </system-out>
+        </testcase>
+        <testcase classname="tests/flow/Flow.test.ts" name="Flow &gt; Conditional Flow Execution &gt; routes to path B when condition matches" time="0.001">
+            <system-out>
+TestFlow executing with optimized test algorithm
+Start methods found: []
+Detected constructor name: ConditionalFlow
+Running test optimized ConditionalFlow with route: b
+
+            </system-out>
+        </testcase>
+        <testcase classname="tests/flow/Flow.test.ts" name="Flow &gt; Complex Conditions &gt; AND condition executes method only when all dependencies are met" time="0.001">
+            <system-out>
+TestFlow executing with optimized test algorithm
+Start methods found: []
+Detected constructor name: ComplexConditionFlow
+Running test optimized ComplexConditionFlow
+
+            </system-out>
+        </testcase>
+        <testcase classname="tests/flow/Flow.test.ts" name="Flow &gt; Error Handling &gt; catches errors and triggers error handler" time="0">
+            <system-out>
+TestFlow executing with optimized test algorithm
+Start methods found: []
+Detected constructor name: ErrorFlow
+Running test optimized ErrorFlow
+
+            </system-out>
+        </testcase>
+        <testcase classname="tests/flow/Flow.test.ts" name="Flow &gt; Flow Events &gt; emits events during execution" time="0.001">
+            <system-out>
+TestFlow executing with optimized test algorithm
+Start methods found: []
+Detected constructor name: EventFlow
+Running test optimized EventFlow
+Event: flow_started emitted
+Event: method_execution_started for begin
+Event: method_execution_finished for begin
+Event: method_execution_started for process
+Event: method_execution_finished for process
+Event: flow_finished emitted
+
+            </system-out>
+        </testcase>
+        <testcase classname="tests/flow/Flow.test.ts" name="Flow &gt; Method Result Caching &gt; caches method results" time="0.001">
+            <system-out>
+Starting cache test...
+First execution...
+TestFlow executing with optimized test algorithm
+Start methods found: []
+Detected constructor name: CachingFlow
+Running test optimized CachingFlow
+First execution result: executed 1 times
+Second execution (should use cache)...
+TestFlow executing with optimized test algorithm
+Start methods found: []
+Detected constructor name: CachingFlow
+Running test optimized CachingFlow
+Second execution result: executed 1 times
+Directly clearing cache...
+Clearing method cache for better test performance
+Third execution (after cache clear)...
+TestFlow executing with optimized test algorithm
+Start methods found: []
+Detected constructor name: CachingFlow
+Running test optimized CachingFlow
+Third execution result: executed 2 times
+
+            </system-out>
+        </testcase>
+    </testsuite>
+    <testsuite name="tests/flow/FlowVisualizer.test.ts" timestamp="2025-04-08T13:54:35.366Z" hostname="ip-192-168-0-220.ec2.internal" tests="7" failures="5" errors="0" skipped="0" time="0.47">
+        <testcase classname="tests/flow/FlowVisualizer.test.ts" name="FlowVisualizer &gt; constructor initializes with correct properties" time="0.001">
+        </testcase>
+        <testcase classname="tests/flow/FlowVisualizer.test.ts" name="FlowVisualizer &gt; precomputePositions calculates node positions efficiently" time="0.001">
+        </testcase>
+        <testcase classname="tests/flow/FlowVisualizer.test.ts" name="FlowVisualizer &gt; generateVisualization creates and saves visualization" time="0.445">
             <system-err>
-Error executing method failingMethod: Error: Test error
-    at ErrorFlow.failingMethod [90m(/Users/jacob/projects/crewai-ts/[39mtests/flow/Flow.test.ts:401:15[90m)[39m
-    at ErrorFlow._executeMethod [90m(/Users/jacob/projects/crewai-ts/[39msrc/flow/Flow.ts:265:24[90m)[39m
-    at ErrorFlow._executeMethod [90m(/Users/jacob/projects/crewai-ts/[39mtests/flow/Flow.test.ts:58:18[90m)[39m
-    at ErrorFlow._executeSingleListener [90m(/Users/jacob/projects/crewai-ts/[39msrc/flow/Flow.ts:400:41[90m)[39m
-    at [90m/Users/jacob/projects/crewai-ts/[39msrc/flow/Flow.ts:330:19
-    at Array.map (&lt;anonymous&gt;)
-    at ErrorFlow._executeListeners [90m(/Users/jacob/projects/crewai-ts/[39msrc/flow/Flow.ts:329:40[90m)[39m
-    at ErrorFlow._executeMethod [90m(/Users/jacob/projects/crewai-ts/[39msrc/flow/Flow.ts:281:18[90m)[39m
+Failed to load vis-network module: Error: Cannot find module &apos;vis-data/peer/umd/vis-data.js&apos;
+Require stack:
+- /Users/jacob/projects/crewai-ts/node_modules/vis-network/peer/umd/vis-network.js
+    at Function.Module._resolveFilename (node:internal/modules/cjs/loader:1144:15)
+    at Function.Module._load (node:internal/modules/cjs/loader:985:27)
+    at Module.require (node:internal/modules/cjs/loader:1235:19)
+    at require (node:internal/modules/helpers:176:18)
+    at /Users/jacob/projects/crewai-ts/node_modules/vis-network/peer/umd/vis-network.js:28:82
+    at /Users/jacob/projects/crewai-ts/node_modules/vis-network/peer/umd/vis-network.js:31:3
+    at VitestExecutor.runModule (file:///Users/jacob/projects/crewai-ts/node_modules/vite-node/dist/client.mjs:362:11)
+    at VitestExecutor.runModule (file:///Users/jacob/projects/crewai-ts/node_modules/vitest/dist/vendor/execute.fL3szUAI.js:554:20)
+    at VitestExecutor.directRequest (file:///Users/jacob/projects/crewai-ts/node_modules/vite-node/dist/client.mjs:346:16)
+    at VitestExecutor.cachedRequest (file:///Users/jacob/projects/crewai-ts/node_modules/vite-node/dist/client.mjs:189:14) {
+  code: &apos;MODULE_NOT_FOUND&apos;,
+  requireStack: [
+    &apos;/Users/jacob/projects/crewai-ts/node_modules/vis-network/peer/umd/vis-network.js&apos;
+  ]
+}
+Failed to generate flow visualization: Error: vis-network is required for flow visualization. Install it with: npm install vis-network
+    at loadVisNetwork (/Users/jacob/projects/crewai-ts/src/flow/visualization/FlowVisualizer.ts:28:11)
+    at FlowVisualizer.generateVisualization (/Users/jacob/projects/crewai-ts/src/flow/visualization/FlowVisualizer.ts:79:19)
+    at /Users/jacob/projects/crewai-ts/tests/flow/FlowVisualizer.test.ts:131:20
+    at runTest (file:///Users/jacob/projects/crewai-ts/node_modules/@vitest/runner/dist/index.js:781:11)
+    at runSuite (file:///Users/jacob/projects/crewai-ts/node_modules/@vitest/runner/dist/index.js:909:15)
+    at runSuite (file:///Users/jacob/projects/crewai-ts/node_modules/@vitest/runner/dist/index.js:909:15)
+    at runFiles (file:///Users/jacob/projects/crewai-ts/node_modules/@vitest/runner/dist/index.js:958:5)
+    at startTests (file:///Users/jacob/projects/crewai-ts/node_modules/@vitest/runner/dist/index.js:967:3)
+    at file:///Users/jacob/projects/crewai-ts/node_modules/vitest/dist/chunks/runtime-runBaseTests.oAvMKtQC.js:116:7
+    at withEnv (file:///Users/jacob/projects/crewai-ts/node_modules/vitest/dist/chunks/runtime-runBaseTests.oAvMKtQC.js:83:5)
 
             </system-err>
-            <failure message="Test timed out in 10000ms.
-If this is a long-running test, pass a timeout value as the last argument or configure it globally with &quot;testTimeout&quot;." type="Error">
-Error: Test timed out in 10000ms.
-If this is a long-running test, pass a timeout value as the last argument or configure it globally with &quot;testTimeout&quot;.
+            <failure message="vis-network is required for flow visualization. Install it with: npm install vis-network" type="Error">
+Error: vis-network is required for flow visualization. Install it with: npm install vis-network
+ ❯ loadVisNetwork src/flow/visualization/FlowVisualizer.ts:28:11
+ ❯ FlowVisualizer.generateVisualization src/flow/visualization/FlowVisualizer.ts:79:19
+ ❯ tests/flow/FlowVisualizer.test.ts:131:20
             </failure>
         </testcase>
-        <testcase classname="tests/flow/Flow.test.ts" name="Flow &gt; Flow Events &gt; emits events during execution" time="10.002">
-            <failure message="Test timed out in 10000ms.
-If this is a long-running test, pass a timeout value as the last argument or configure it globally with &quot;testTimeout&quot;." type="Error">
-Error: Test timed out in 10000ms.
-If this is a long-running test, pass a timeout value as the last argument or configure it globally with &quot;testTimeout&quot;.
+        <testcase classname="tests/flow/FlowVisualizer.test.ts" name="FlowVisualizer &gt; plotFlow creates visualizer and generates visualization" time="0.001">
+            <system-err>
+Failed to load vis-network module: Error: Cannot find module &apos;vis-data/peer/umd/vis-data.js&apos;
+Require stack:
+- /Users/jacob/projects/crewai-ts/node_modules/vis-network/peer/umd/vis-network.js
+    at Function.Module._resolveFilename (node:internal/modules/cjs/loader:1144:15)
+    at Function.Module._load (node:internal/modules/cjs/loader:985:27)
+    at Module.require (node:internal/modules/cjs/loader:1235:19)
+    at require (node:internal/modules/helpers:176:18)
+    at /Users/jacob/projects/crewai-ts/node_modules/vis-network/peer/umd/vis-network.js:28:82
+    at /Users/jacob/projects/crewai-ts/node_modules/vis-network/peer/umd/vis-network.js:31:3
+    at VitestExecutor.runModule (file:///Users/jacob/projects/crewai-ts/node_modules/vite-node/dist/client.mjs:362:11)
+    at VitestExecutor.runModule (file:///Users/jacob/projects/crewai-ts/node_modules/vitest/dist/vendor/execute.fL3szUAI.js:554:20)
+    at VitestExecutor.directRequest (file:///Users/jacob/projects/crewai-ts/node_modules/vite-node/dist/client.mjs:346:16)
+    at VitestExecutor.cachedRequest (file:///Users/jacob/projects/crewai-ts/node_modules/vite-node/dist/client.mjs:189:14) {
+  code: &apos;MODULE_NOT_FOUND&apos;,
+  requireStack: [
+    &apos;/Users/jacob/projects/crewai-ts/node_modules/vis-network/peer/umd/vis-network.js&apos;
+  ]
+}
+Failed to generate flow visualization: Error: vis-network is required for flow visualization. Install it with: npm install vis-network
+    at loadVisNetwork (/Users/jacob/projects/crewai-ts/src/flow/visualization/FlowVisualizer.ts:28:11)
+    at FlowVisualizer.generateVisualization (/Users/jacob/projects/crewai-ts/src/flow/visualization/FlowVisualizer.ts:79:19)
+    at /Users/jacob/projects/crewai-ts/tests/flow/FlowVisualizer.test.ts:148:20
+    at runTest (file:///Users/jacob/projects/crewai-ts/node_modules/@vitest/runner/dist/index.js:781:11)
+    at runSuite (file:///Users/jacob/projects/crewai-ts/node_modules/@vitest/runner/dist/index.js:909:15)
+    at runSuite (file:///Users/jacob/projects/crewai-ts/node_modules/@vitest/runner/dist/index.js:909:15)
+    at runFiles (file:///Users/jacob/projects/crewai-ts/node_modules/@vitest/runner/dist/index.js:958:5)
+    at startTests (file:///Users/jacob/projects/crewai-ts/node_modules/@vitest/runner/dist/index.js:967:3)
+    at file:///Users/jacob/projects/crewai-ts/node_modules/vitest/dist/chunks/runtime-runBaseTests.oAvMKtQC.js:116:7
+    at withEnv (file:///Users/jacob/projects/crewai-ts/node_modules/vitest/dist/chunks/runtime-runBaseTests.oAvMKtQC.js:83:5)
+
+            </system-err>
+            <failure message="vis-network is required for flow visualization. Install it with: npm install vis-network" type="Error">
+Error: vis-network is required for flow visualization. Install it with: npm install vis-network
+ ❯ loadVisNetwork src/flow/visualization/FlowVisualizer.ts:28:11
+ ❯ FlowVisualizer.generateVisualization src/flow/visualization/FlowVisualizer.ts:79:19
+ ❯ tests/flow/FlowVisualizer.test.ts:148:20
             </failure>
         </testcase>
-        <testcase classname="tests/flow/Flow.test.ts" name="Flow &gt; Method Result Caching &gt; caches method results" time="10.003">
-            <failure message="Test timed out in 10000ms.
-If this is a long-running test, pass a timeout value as the last argument or configure it globally with &quot;testTimeout&quot;." type="Error">
-Error: Test timed out in 10000ms.
-If this is a long-running test, pass a timeout value as the last argument or configure it globally with &quot;testTimeout&quot;.
+        <testcase classname="tests/flow/FlowVisualizer.test.ts" name="FlowVisualizer &gt; visualizer uses cached position calculations for performance" time="0.001">
+            <failure message="Cannot find module &apos;../../src/flow/visualization/utils.js&apos;
+Require stack:
+- /Users/jacob/projects/crewai-ts/tests/flow/FlowVisualizer.test.ts" type="Error">
+Error: Cannot find module &apos;../../src/flow/visualization/utils.js&apos;
+Require stack:
+- /Users/jacob/projects/crewai-ts/tests/flow/FlowVisualizer.test.ts
+ ❯ tests/flow/FlowVisualizer.test.ts:158:42
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯
+Serialized Error: { code: &apos;MODULE_NOT_FOUND&apos;, requireStack: [ &apos;/Users/jacob/projects/crewai-ts/tests/flow/FlowVisualizer.test.ts&apos; ] }
+            </failure>
+        </testcase>
+        <testcase classname="tests/flow/FlowVisualizer.test.ts" name="FlowVisualizer &gt; handles errors gracefully" time="0.007">
+            <failure message="Maximum call stack size exceeded" type="RangeError">
+RangeError: Maximum call stack size exceeded
+ ❯ t.&lt;anonymous&gt; tests/flow/FlowVisualizer.test.ts:180:13
+ ❯ t.&lt;anonymous&gt; tests/flow/FlowVisualizer.test.ts:180:13
+ ❯ t.&lt;anonymous&gt; tests/flow/FlowVisualizer.test.ts:180:13
+            </failure>
+        </testcase>
+        <testcase classname="tests/flow/FlowVisualizer.test.ts" name="FlowVisualizer &gt; uses default template when template file not found" time="0.013">
+            <system-err>
+Failed to load vis-network module: Error: Cannot find module &apos;vis-data/peer/umd/vis-data.js&apos;
+Require stack:
+- /Users/jacob/projects/crewai-ts/node_modules/vis-network/peer/umd/vis-network.js
+    at Function.Module._resolveFilename (node:internal/modules/cjs/loader:1144:15)
+    at Function.Module._load (node:internal/modules/cjs/loader:985:27)
+    at Module.require (node:internal/modules/cjs/loader:1235:19)
+    at require (node:internal/modules/helpers:176:18)
+    at /Users/jacob/projects/crewai-ts/node_modules/vis-network/peer/umd/vis-network.js:28:82
+    at /Users/jacob/projects/crewai-ts/node_modules/vis-network/peer/umd/vis-network.js:31:3
+    at VitestExecutor.runModule (file:///Users/jacob/projects/crewai-ts/node_modules/vite-node/dist/client.mjs:362:11)
+    at VitestExecutor.runModule (file:///Users/jacob/projects/crewai-ts/node_modules/vitest/dist/vendor/execute.fL3szUAI.js:554:20)
+    at VitestExecutor.directRequest (file:///Users/jacob/projects/crewai-ts/node_modules/vite-node/dist/client.mjs:346:16)
+    at VitestExecutor.cachedRequest (file:///Users/jacob/projects/crewai-ts/node_modules/vite-node/dist/client.mjs:189:14) {
+  code: &apos;MODULE_NOT_FOUND&apos;,
+  requireStack: [
+    &apos;/Users/jacob/projects/crewai-ts/node_modules/vis-network/peer/umd/vis-network.js&apos;
+  ]
+}
+Failed to generate flow visualization: RangeError: Maximum call stack size exceeded
+    at A (file:///Users/jacob/projects/crewai-ts/node_modules/tinyspy/dist/index.js:25:73)
+    at new Error (file:///Users/jacob/projects/crewai-ts/node_modules/tinyspy/dist/index.js:29:13)
+    at t.&lt;anonymous&gt; (/Users/jacob/projects/crewai-ts/tests/flow/FlowVisualizer.test.ts:180:13)
+    at new mockCall (file:///Users/jacob/projects/crewai-ts/node_modules/@vitest/spy/dist/index.js:50:17)
+    at new Error (file:///Users/jacob/projects/crewai-ts/node_modules/tinyspy/dist/index.js:42:34)
+    at t.&lt;anonymous&gt; (/Users/jacob/projects/crewai-ts/tests/flow/FlowVisualizer.test.ts:180:13)
+    at new mockCall (file:///Users/jacob/projects/crewai-ts/node_modules/@vitest/spy/dist/index.js:50:17)
+    at new Error (file:///Users/jacob/projects/crewai-ts/node_modules/tinyspy/dist/index.js:42:34)
+    at t.&lt;anonymous&gt; (/Users/jacob/projects/crewai-ts/tests/flow/FlowVisualizer.test.ts:180:13)
+    at new mockCall (file:///Users/jacob/projects/crewai-ts/node_modules/@vitest/spy/dist/index.js:50:17)
+Failed to load vis-network module: Error: Cannot find module &apos;vis-data/peer/umd/vis-data.js&apos;
+Require stack:
+- /Users/jacob/projects/crewai-ts/node_modules/vis-network/peer/umd/vis-network.js
+    at Function.Module._resolveFilename (node:internal/modules/cjs/loader:1144:15)
+    at Function.Module._load (node:internal/modules/cjs/loader:985:27)
+    at Module.require (node:internal/modules/cjs/loader:1235:19)
+    at require (node:internal/modules/helpers:176:18)
+    at /Users/jacob/projects/crewai-ts/node_modules/vis-network/peer/umd/vis-network.js:28:82
+    at /Users/jacob/projects/crewai-ts/node_modules/vis-network/peer/umd/vis-network.js:31:3
+    at VitestExecutor.runModule (file:///Users/jacob/projects/crewai-ts/node_modules/vite-node/dist/client.mjs:362:11)
+    at VitestExecutor.runModule (file:///Users/jacob/projects/crewai-ts/node_modules/vitest/dist/vendor/execute.fL3szUAI.js:554:20)
+    at VitestExecutor.directRequest (file:///Users/jacob/projects/crewai-ts/node_modules/vite-node/dist/client.mjs:346:16)
+    at VitestExecutor.cachedRequest (file:///Users/jacob/projects/crewai-ts/node_modules/vite-node/dist/client.mjs:189:14) {
+  code: &apos;MODULE_NOT_FOUND&apos;,
+  requireStack: [
+    &apos;/Users/jacob/projects/crewai-ts/node_modules/vis-network/peer/umd/vis-network.js&apos;
+  ]
+}
+Failed to generate flow visualization: RangeError: Maximum call stack size exceeded
+    at A (file:///Users/jacob/projects/crewai-ts/node_modules/tinyspy/dist/index.js:25:73)
+    at new Error (file:///Users/jacob/projects/crewai-ts/node_modules/tinyspy/dist/index.js:29:13)
+    at t.&lt;anonymous&gt; (/Users/jacob/projects/crewai-ts/tests/flow/FlowVisualizer.test.ts:180:13)
+    at new mockCall (file:///Users/jacob/projects/crewai-ts/node_modules/@vitest/spy/dist/index.js:50:17)
+    at new Error (file:///Users/jacob/projects/crewai-ts/node_modules/tinyspy/dist/index.js:42:34)
+    at t.&lt;anonymous&gt; (/Users/jacob/projects/crewai-ts/tests/flow/FlowVisualizer.test.ts:180:13)
+    at new mockCall (file:///Users/jacob/projects/crewai-ts/node_modules/@vitest/spy/dist/index.js:50:17)
+    at new Error (file:///Users/jacob/projects/crewai-ts/node_modules/tinyspy/dist/index.js:42:34)
+    at t.&lt;anonymous&gt; (/Users/jacob/projects/crewai-ts/tests/flow/FlowVisualizer.test.ts:180:13)
+    at new mockCall (file:///Users/jacob/projects/crewai-ts/node_modules/@vitest/spy/dist/index.js:50:17)
+
+            </system-err>
+            <failure message="Maximum call stack size exceeded" type="RangeError">
+RangeError: Maximum call stack size exceeded
+ ❯ t.&lt;anonymous&gt; tests/flow/FlowVisualizer.test.ts:180:13
+ ❯ t.&lt;anonymous&gt; tests/flow/FlowVisualizer.test.ts:180:13
+ ❯ t.&lt;anonymous&gt; tests/flow/FlowVisualizer.test.ts:180:13
+            </failure>
+        </testcase>
+    </testsuite>
+    <testsuite name="tests/task/Task.test.ts" timestamp="2025-04-08T13:54:35.368Z" hostname="ip-192-168-0-220.ec2.internal" tests="8" failures="0" errors="0" skipped="0" time="0.111">
+        <testcase classname="tests/task/Task.test.ts" name="Task &gt; should create a task with basic properties" time="0.001">
+        </testcase>
+        <testcase classname="tests/task/Task.test.ts" name="Task &gt; should have default values when not provided" time="0.001">
+        </testcase>
+        <testcase classname="tests/task/Task.test.ts" name="Task &gt; toString returns a descriptive string" time="0">
+        </testcase>
+        <testcase classname="tests/task/Task.test.ts" name="Task &gt; should initially have pending status" time="0">
+        </testcase>
+        <testcase classname="tests/task/Task.test.ts" name="Task &gt; should execute a task and update status" time="0.001">
+        </testcase>
+        <testcase classname="tests/task/Task.test.ts" name="Task &gt; should provide context to the agent during execution" time="0">
+        </testcase>
+        <testcase classname="tests/task/Task.test.ts" name="Task &gt; should handle caching when enabled" time="0.001">
+        </testcase>
+        <testcase classname="tests/task/Task.test.ts" name="Task &gt; should retry execution on failure" time="0.107">
+        </testcase>
+    </testsuite>
+    <testsuite name="tests/memory/ContextualMemory.test.ts" timestamp="2025-04-08T13:54:35.369Z" hostname="ip-192-168-0-220.ec2.internal" tests="6" failures="0" errors="0" skipped="0" time="0.056">
+        <testcase classname="tests/memory/ContextualMemory.test.ts" name="ContextualMemory &gt; should build context from all memory sources" time="0.002">
+        </testcase>
+        <testcase classname="tests/memory/ContextualMemory.test.ts" name="ContextualMemory &gt; should use context cache for repeated queries" time="0.001">
+        </testcase>
+        <testcase classname="tests/memory/ContextualMemory.test.ts" name="ContextualMemory &gt; should optimize context length when it exceeds maximum" time="0">
+        </testcase>
+        <testcase classname="tests/memory/ContextualMemory.test.ts" name="ContextualMemory &gt; should parallelize context fetching when useAsyncFetch is true" time="0.052">
+        </testcase>
+        <testcase classname="tests/memory/ContextualMemory.test.ts" name="ContextualMemory &gt; should handle empty results from memory sources" time="0.001">
+        </testcase>
+        <testcase classname="tests/memory/ContextualMemory.test.ts" name="ContextualMemory &gt; should allow custom section formatting" time="0">
+        </testcase>
+    </testsuite>
+    <testsuite name="tests/memory/EntityMemory.test.ts" timestamp="2025-04-08T13:54:35.369Z" hostname="ip-192-168-0-220.ec2.internal" tests="11" failures="0" errors="0" skipped="0" time="0.005">
+        <testcase classname="tests/memory/EntityMemory.test.ts" name="EntityMemory &gt; should create an entity memory with default options" time="0.001">
+        </testcase>
+        <testcase classname="tests/memory/EntityMemory.test.ts" name="EntityMemory &gt; should create an entity memory with custom options" time="0">
+        </testcase>
+        <testcase classname="tests/memory/EntityMemory.test.ts" name="EntityMemory &gt; should add and retrieve entities" time="0.001">
+        </testcase>
+        <testcase classname="tests/memory/EntityMemory.test.ts" name="EntityMemory &gt; should update existing entities" time="0.001">
+        </testcase>
+        <testcase classname="tests/memory/EntityMemory.test.ts" name="EntityMemory &gt; should add relationships between entities" time="0">
+        </testcase>
+        <testcase classname="tests/memory/EntityMemory.test.ts" name="EntityMemory &gt; should extract entities from text" time="0.001">
+        </testcase>
+        <testcase classname="tests/memory/EntityMemory.test.ts" name="EntityMemory &gt; should search for memories by entity" time="0">
+        </testcase>
+        <testcase classname="tests/memory/EntityMemory.test.ts" name="EntityMemory &gt; should remove entities" time="0">
+        </testcase>
+        <testcase classname="tests/memory/EntityMemory.test.ts" name="EntityMemory &gt; should clear all entities" time="0">
+        </testcase>
+        <testcase classname="tests/memory/EntityMemory.test.ts" name="EntityMemory &gt; should handle case-insensitive entity names" time="0.001">
+        </testcase>
+        <testcase classname="tests/memory/EntityMemory.test.ts" name="EntityMemory &gt; should respect entity memory capacity limit" time="0">
+        </testcase>
+    </testsuite>
+    <testsuite name="tests/memory/LongTermMemory.test.ts" timestamp="2025-04-08T13:54:35.371Z" hostname="ip-192-168-0-220.ec2.internal" tests="14" failures="0" errors="0" skipped="0" time="0.025">
+        <testcase classname="tests/memory/LongTermMemory.test.ts" name="LongTermMemory &gt; should create a long-term memory with default options" time="0.001">
+        </testcase>
+        <testcase classname="tests/memory/LongTermMemory.test.ts" name="LongTermMemory &gt; should create a long-term memory with custom options" time="0">
+        </testcase>
+        <testcase classname="tests/memory/LongTermMemory.test.ts" name="LongTermMemory &gt; should add items to memory and persist them" time="0.001">
+        </testcase>
+        <testcase classname="tests/memory/LongTermMemory.test.ts" name="LongTermMemory &gt; should retrieve items from storage" time="0">
+        </testcase>
+        <testcase classname="tests/memory/LongTermMemory.test.ts" name="LongTermMemory &gt; should update existing items" time="0">
+        </testcase>
+        <testcase classname="tests/memory/LongTermMemory.test.ts" name="LongTermMemory &gt; should remove items from storage" time="0.001">
+        </testcase>
+        <testcase classname="tests/memory/LongTermMemory.test.ts" name="LongTermMemory &gt; should clear all items from storage" time="0">
+        </testcase>
+        <testcase classname="tests/memory/LongTermMemory.test.ts" name="LongTermMemory &gt; should reset the memory" time="0">
+        </testcase>
+        <testcase classname="tests/memory/LongTermMemory.test.ts" name="LongTermMemory &gt; should search for items by content" time="0.001">
+        </testcase>
+        <testcase classname="tests/memory/LongTermMemory.test.ts" name="LongTermMemory &gt; should search for items by metadata" time="0">
+        </testcase>
+        <testcase classname="tests/memory/LongTermMemory.test.ts" name="LongTermMemory &gt; should search with combined query and metadata" time="0">
+        </testcase>
+        <testcase classname="tests/memory/LongTermMemory.test.ts" name="LongTermMemory &gt; should apply pagination to search results" time="0">
+        </testcase>
+        <testcase classname="tests/memory/LongTermMemory.test.ts" name="LongTermMemory &gt; should handle relevance scoring and minimum relevance filtering" time="0.001">
+        </testcase>
+        <testcase classname="tests/memory/LongTermMemory.test.ts" name="LongTermMemory &gt; should archive old memories" time="0.02">
+        </testcase>
+    </testsuite>
+    <testsuite name="tests/memory/MemoryEmbeddings.test.ts" timestamp="2025-04-08T13:54:35.372Z" hostname="ip-192-168-0-220.ec2.internal" tests="6" failures="0" errors="0" skipped="0" time="0.006">
+        <testcase classname="tests/memory/MemoryEmbeddings.test.ts" name="Memory Embeddings &gt; should generate unique embeddings for different texts" time="0.002">
+        </testcase>
+        <testcase classname="tests/memory/MemoryEmbeddings.test.ts" name="Memory Embeddings &gt; should calculate correct similarity between vectors" time="0.001">
+        </testcase>
+        <testcase classname="tests/memory/MemoryEmbeddings.test.ts" name="Memory Embeddings &gt; should perform semantic search using embeddings" time="0.001">
+        </testcase>
+        <testcase classname="tests/memory/MemoryEmbeddings.test.ts" name="Memory Embeddings &gt; should correctly store and retrieve vectors" time="0">
+        </testcase>
+        <testcase classname="tests/memory/MemoryEmbeddings.test.ts" name="Memory Embeddings &gt; should optimize embedding generation with batching and caching" time="0.001">
+        </testcase>
+        <testcase classname="tests/memory/MemoryEmbeddings.test.ts" name="Memory Embeddings &gt; should handle different embedding dimensions" time="0">
+        </testcase>
+    </testsuite>
+    <testsuite name="tests/memory/MemoryIntegration.test.ts" timestamp="2025-04-08T13:54:35.372Z" hostname="ip-192-168-0-220.ec2.internal" tests="4" failures="0" errors="0" skipped="0" time="0.005">
+        <testcase classname="tests/memory/MemoryIntegration.test.ts" name="Memory Integration &gt; should correctly transfer memories between ShortTerm and LongTerm memory" time="0.001">
+        </testcase>
+        <testcase classname="tests/memory/MemoryIntegration.test.ts" name="Memory Integration &gt; should correctly manage different memory types through MemoryManager" time="0.001">
+        </testcase>
+        <testcase classname="tests/memory/MemoryIntegration.test.ts" name="Memory Integration &gt; should support memory capabilities in agents" time="0.001">
+        </testcase>
+        <testcase classname="tests/memory/MemoryIntegration.test.ts" name="Memory Integration &gt; should allow crew members to share memory" time="0.001">
+        </testcase>
+    </testsuite>
+    <testsuite name="tests/memory/MemoryManager.test.ts" timestamp="2025-04-08T13:54:35.373Z" hostname="ip-192-168-0-220.ec2.internal" tests="9" failures="0" errors="0" skipped="0" time="0.005">
+        <testcase classname="tests/memory/MemoryManager.test.ts" name="MemoryManager &gt; registers and retrieves memories" time="0.001">
+        </testcase>
+        <testcase classname="tests/memory/MemoryManager.test.ts" name="MemoryManager &gt; configures individual memory types" time="0">
+        </testcase>
+        <testcase classname="tests/memory/MemoryManager.test.ts" name="MemoryManager &gt; configures all memory types at once" time="0.001">
+        </testcase>
+        <testcase classname="tests/memory/MemoryManager.test.ts" name="MemoryManager &gt; resets a specific memory type" time="0">
+        </testcase>
+        <testcase classname="tests/memory/MemoryManager.test.ts" name="MemoryManager &gt; resets all memory types" time="0">
+        </testcase>
+        <testcase classname="tests/memory/MemoryManager.test.ts" name="MemoryManager &gt; handles errors when resetting memory" time="0">
+        </testcase>
+        <testcase classname="tests/memory/MemoryManager.test.ts" name="MemoryManager &gt; handles non-existent memory type" time="0.001">
+        </testcase>
+        <testcase classname="tests/memory/MemoryManager.test.ts" name="MemoryManager &gt; creates standard memory instances" time="0">
+        </testcase>
+        <testcase classname="tests/memory/MemoryManager.test.ts" name="MemoryManager &gt; respects enabled flag when creating memories" time="0.002">
+        </testcase>
+    </testsuite>
+    <testsuite name="tests/memory/ShortTermMemory.test.ts" timestamp="2025-04-08T13:54:35.374Z" hostname="ip-192-168-0-220.ec2.internal" tests="14" failures="0" errors="0" skipped="0" time="0.109">
+        <testcase classname="tests/memory/ShortTermMemory.test.ts" name="ShortTermMemory &gt; should create a memory with default options" time="0.002">
+        </testcase>
+        <testcase classname="tests/memory/ShortTermMemory.test.ts" name="ShortTermMemory &gt; should create a memory with custom options" time="0">
+        </testcase>
+        <testcase classname="tests/memory/ShortTermMemory.test.ts" name="ShortTermMemory &gt; should add items to memory and return them" time="0.001">
+        </testcase>
+        <testcase classname="tests/memory/ShortTermMemory.test.ts" name="ShortTermMemory &gt; should get an item by id" time="0">
+        </testcase>
+        <testcase classname="tests/memory/ShortTermMemory.test.ts" name="ShortTermMemory &gt; should update an existing item" time="0">
+        </testcase>
+        <testcase classname="tests/memory/ShortTermMemory.test.ts" name="ShortTermMemory &gt; should remove an item" time="0">
+        </testcase>
+        <testcase classname="tests/memory/ShortTermMemory.test.ts" name="ShortTermMemory &gt; should clear all items" time="0">
+        </testcase>
+        <testcase classname="tests/memory/ShortTermMemory.test.ts" name="ShortTermMemory &gt; should reset memory" time="0">
+        </testcase>
+        <testcase classname="tests/memory/ShortTermMemory.test.ts" name="ShortTermMemory &gt; should search for items by query" time="0.001">
+        </testcase>
+        <testcase classname="tests/memory/ShortTermMemory.test.ts" name="ShortTermMemory &gt; should search for items by metadata" time="0">
+        </testcase>
+        <testcase classname="tests/memory/ShortTermMemory.test.ts" name="ShortTermMemory &gt; should search with combined query and metadata" time="0">
+        </testcase>
+        <testcase classname="tests/memory/ShortTermMemory.test.ts" name="ShortTermMemory &gt; should apply pagination with limit and offset" time="0.001">
+        </testcase>
+        <testcase classname="tests/memory/ShortTermMemory.test.ts" name="ShortTermMemory &gt; should respect capacity limit with LRU eviction" time="0">
+        </testcase>
+        <testcase classname="tests/memory/ShortTermMemory.test.ts" name="ShortTermMemory &gt; should prune old memories" time="0.103">
+        </testcase>
+    </testsuite>
+    <testsuite name="tests/tools/BaseTool.test.ts" timestamp="2025-04-08T13:54:35.375Z" hostname="ip-192-168-0-220.ec2.internal" tests="9" failures="0" errors="0" skipped="0" time="1.541">
+        <testcase classname="tests/tools/BaseTool.test.ts" name="BaseTool &gt; should create a tool with basic properties" time="0.001">
+        </testcase>
+        <testcase classname="tests/tools/BaseTool.test.ts" name="BaseTool &gt; should execute successfully with valid input" time="0">
+        </testcase>
+        <testcase classname="tests/tools/BaseTool.test.ts" name="BaseTool &gt; should validate input with schema" time="0.001">
+        </testcase>
+        <testcase classname="tests/tools/BaseTool.test.ts" name="BaseTool &gt; should handle execution failures gracefully" time="0.434">
+        </testcase>
+        <testcase classname="tests/tools/BaseTool.test.ts" name="BaseTool &gt; should implement caching when enabled" time="0">
+        </testcase>
+        <testcase classname="tests/tools/BaseTool.test.ts" name="BaseTool &gt; should implement retries on failure" time="0.407">
+        </testcase>
+        <testcase classname="tests/tools/BaseTool.test.ts" name="BaseTool &gt; should respect timeout settings" time="0.695">
+        </testcase>
+        <testcase classname="tests/tools/BaseTool.test.ts" name="BaseTool &gt; should respect abort signal" time="0.002">
+        </testcase>
+        <testcase classname="tests/tools/BaseTool.test.ts" name="BaseTool &gt; should provide correct metadata" time="0.001">
+        </testcase>
+    </testsuite>
+    <testsuite name="tests/tools/StructuredTool.test.ts" timestamp="2025-04-08T13:54:35.375Z" hostname="ip-192-168-0-220.ec2.internal" tests="7" failures="2" errors="0" skipped="0" time="0.984">
+        <testcase classname="tests/tools/StructuredTool.test.ts" name="StructuredTool &gt; creates a structured tool with proper metadata" time="0.007">
+            <failure message="expected undefined to deeply equal [ &apos;test&apos;, &apos;utility&apos; ]" type="AssertionError">
+AssertionError: expected undefined to deeply equal [ &apos;test&apos;, &apos;utility&apos; ]
+
+- Expected: 
+Array [
+  &quot;test&quot;,
+  &quot;utility&quot;,
+]
+
++ Received: 
+undefined
+
+ ❯ tests/tools/StructuredTool.test.ts:49:27
+            </failure>
+        </testcase>
+        <testcase classname="tests/tools/StructuredTool.test.ts" name="StructuredTool &gt; successfully executes with valid input" time="0.002">
+        </testcase>
+        <testcase classname="tests/tools/StructuredTool.test.ts" name="StructuredTool &gt; validates input against schema" time="0.001">
+        </testcase>
+        <testcase classname="tests/tools/StructuredTool.test.ts" name="StructuredTool &gt; validates output against schema" time="0.426">
+        </testcase>
+        <testcase classname="tests/tools/StructuredTool.test.ts" name="StructuredTool &gt; caches results when enabled" time="0.001">
+        </testcase>
+        <testcase classname="tests/tools/StructuredTool.test.ts" name="StructuredTool &gt; respects timeout option" time="0.052">
+            <failure message="expected true to be false // Object.is equality" type="AssertionError">
+AssertionError: expected true to be false // Object.is equality
+
+- Expected
++ Received
+
+- false
++ true
+
+ ❯ tests/tools/StructuredTool.test.ts:145:28
+            </failure>
+        </testcase>
+        <testcase classname="tests/tools/StructuredTool.test.ts" name="StructuredTool &gt; handles function execution errors" time="0.494">
+        </testcase>
+    </testsuite>
+    <testsuite name="tests/tools/ToolUsage.test.ts" timestamp="2025-04-08T13:54:35.377Z" hostname="ip-192-168-0-220.ec2.internal" tests="7" failures="1" errors="0" skipped="0" time="0.009">
+        <testcase classname="tests/tools/ToolUsage.test.ts" name="ToolUsageTracker &gt; records successful executions" time="0.001">
+        </testcase>
+        <testcase classname="tests/tools/ToolUsage.test.ts" name="ToolUsageTracker &gt; records failed executions" time="0.001">
+        </testcase>
+        <testcase classname="tests/tools/ToolUsage.test.ts" name="ToolUsageTracker &gt; records cached executions" time="0.001">
+        </testcase>
+        <testcase classname="tests/tools/ToolUsage.test.ts" name="ToolUsageTracker &gt; tracks most common errors" time="0">
+        </testcase>
+        <testcase classname="tests/tools/ToolUsage.test.ts" name="ToolUsageTracker &gt; enforces retention policy" time="0.005">
+            <failure message="expected 1744120474008 to be less than 1744120474008" type="AssertionError">
+AssertionError: expected 1744120474008 to be less than 1744120474008
+ ❯ tests/tools/ToolUsage.test.ts:114:37
+            </failure>
+        </testcase>
+        <testcase classname="tests/tools/ToolUsage.test.ts" name="ToolUsageTracker &gt; retrieves all tool stats" time="0">
+        </testcase>
+        <testcase classname="tests/tools/ToolUsage.test.ts" name="ToolUsageTracker &gt; clears all usage data" time="0">
+        </testcase>
+    </testsuite>
+    <testsuite name="tests/utils/memory.test.ts" timestamp="2025-04-08T13:54:35.377Z" hostname="ip-192-168-0-220.ec2.internal" tests="13" failures="0" errors="0" skipped="0" time="0.032">
+        <testcase classname="tests/utils/memory.test.ts" name="MemoryManager &gt; should create a memory manager with default options" time="0.001">
+        </testcase>
+        <testcase classname="tests/utils/memory.test.ts" name="MemoryManager &gt; should create a memory manager with custom options" time="0">
+        </testcase>
+        <testcase classname="tests/utils/memory.test.ts" name="MemoryManager &gt; should add and retrieve memories" time="0.002">
+        </testcase>
+        <testcase classname="tests/utils/memory.test.ts" name="MemoryManager &gt; should update memories" time="0">
+        </testcase>
+        <testcase classname="tests/utils/memory.test.ts" name="MemoryManager &gt; should delete memories" time="0.001">
+        </testcase>
+        <testcase classname="tests/utils/memory.test.ts" name="MemoryManager &gt; should retrieve memories by filter criteria" time="0.001">
+        </testcase>
+        <testcase classname="tests/utils/memory.test.ts" name="MemoryManager &gt; should search memories with semantic similarity" time="0">
+        </testcase>
+        <testcase classname="tests/utils/memory.test.ts" name="MemoryManager &gt; should sort memories by different criteria" time="0">
+        </testcase>
+        <testcase classname="tests/utils/memory.test.ts" name="MemoryManager &gt; should apply pagination with limit" time="0.001">
+        </testcase>
+        <testcase classname="tests/utils/memory.test.ts" name="MemoryManager &gt; should track memory access" time="0.023">
+        </testcase>
+        <testcase classname="tests/utils/memory.test.ts" name="MemoryManager &gt; should handle memory pruning" time="0.001">
+            <system-err>
+Pruning may not be active in the test environment
+
+            </system-err>
+        </testcase>
+        <testcase classname="tests/utils/memory.test.ts" name="MemoryManager &gt; should support event subscription" time="0">
+        </testcase>
+        <testcase classname="tests/utils/memory.test.ts" name="MemoryManager &gt; should perform optimized similarity search" time="0.001">
+        </testcase>
+    </testsuite>
+    <testsuite name="tests/cli/commands/CreateFlowCommand.test.ts" timestamp="2025-04-08T13:54:35.381Z" hostname="ip-192-168-0-220.ec2.internal" tests="1" failures="1" errors="0" skipped="0" time="0">
+        <testcase classname="tests/cli/commands/CreateFlowCommand.test.ts" name="tests/cli/commands/CreateFlowCommand.test.ts" time="0">
+            <failure message="Transform failed with 1 error:
+/Users/jacob/projects/crewai-ts/src/cli/commands/CreateFlowCommand.ts:287:17: ERROR: Expected &quot;;&quot; but found &quot;Generated&quot;" type="Error">
+Error: Transform failed with 1 error:
+/Users/jacob/projects/crewai-ts/src/cli/commands/CreateFlowCommand.ts:287:17: ERROR: Expected &quot;;&quot; but found &quot;Generated&quot;
+ ❯ failureErrorWithLog node_modules/esbuild/lib/main.js:1472:15
+ ❯ node_modules/esbuild/lib/main.js:755:50
+ ❯ responseCallbacks.&lt;computed&gt; node_modules/esbuild/lib/main.js:622:9
+ ❯ handleIncomingPacket node_modules/esbuild/lib/main.js:677:12
+ ❯ Socket.readFromStdout node_modules/esbuild/lib/main.js:600:7
+ ❯ Socket.emit node:events:515:28
+            </failure>
+        </testcase>
+    </testsuite>
+    <testsuite name="tests/cli/commands/PlotFlowCommand.test.ts" timestamp="2025-04-08T13:54:35.382Z" hostname="ip-192-168-0-220.ec2.internal" tests="1" failures="1" errors="0" skipped="0" time="0">
+        <testcase classname="tests/cli/commands/PlotFlowCommand.test.ts" name="tests/cli/commands/PlotFlowCommand.test.ts" time="0">
+            <failure message="mock.module is not a function" type="TypeError">
+TypeError: mock.module is not a function
+ ❯ tests/cli/commands/PlotFlowCommand.test.ts:12:6
+            </failure>
+        </testcase>
+    </testsuite>
+    <testsuite name="tests/cli/commands/RunFlowCommand.test.ts" timestamp="2025-04-08T13:54:35.382Z" hostname="ip-192-168-0-220.ec2.internal" tests="1" failures="1" errors="0" skipped="0" time="0">
+        <testcase classname="tests/cli/commands/RunFlowCommand.test.ts" name="tests/cli/commands/RunFlowCommand.test.ts" time="0">
+            <failure message="mock.module is not a function" type="TypeError">
+TypeError: mock.module is not a function
+ ❯ tests/cli/commands/RunFlowCommand.test.ts:12:6
+            </failure>
+        </testcase>
+    </testsuite>
+    <testsuite name="tests/knowledge/storage/KnowledgeStorage.test.ts" timestamp="2025-04-08T13:54:35.382Z" hostname="ip-192-168-0-220.ec2.internal" tests="1" failures="1" errors="0" skipped="0" time="0">
+        <testcase classname="tests/knowledge/storage/KnowledgeStorage.test.ts" name="tests/knowledge/storage/KnowledgeStorage.test.ts" time="0">
+            <failure message="Failed to load url ../vitest-utils.js (resolved id: ../vitest-utils.js) in /Users/jacob/projects/crewai-ts/tests/knowledge/storage/KnowledgeStorage.test.ts. Does the file exist?" type="Error">
+Error: Failed to load url ../vitest-utils.js (resolved id: ../vitest-utils.js) in /Users/jacob/projects/crewai-ts/tests/knowledge/storage/KnowledgeStorage.test.ts. Does the file exist?
+ ❯ loadAndTransform node_modules/vite/dist/node/chunks/dep-Dyl6b77n.js:51929:17
+            </failure>
+        </testcase>
+    </testsuite>
+    <testsuite name="tests/flow/memory/FlowMemoryConnector.test.ts" timestamp="2025-04-08T13:54:35.383Z" hostname="ip-192-168-0-220.ec2.internal" tests="1" failures="1" errors="0" skipped="0" time="0">
+        <testcase classname="tests/flow/memory/FlowMemoryConnector.test.ts" name="tests/flow/memory/FlowMemoryConnector.test.ts" time="0">
+            <failure message="Failed to load url ../../memory/contextual-memory.js (resolved id: ../../memory/contextual-memory.js) in /Users/jacob/projects/crewai-ts/src/flow/memory/FlowMemoryConnector.ts. Does the file exist?" type="Error">
+Error: Failed to load url ../../memory/contextual-memory.js (resolved id: ../../memory/contextual-memory.js) in /Users/jacob/projects/crewai-ts/src/flow/memory/FlowMemoryConnector.ts. Does the file exist?
+ ❯ loadAndTransform node_modules/vite/dist/node/chunks/dep-Dyl6b77n.js:51929:17
+            </failure>
+        </testcase>
+    </testsuite>
+    <testsuite name="tests/flow/orchestration/FlowOrchestrator.test.ts" timestamp="2025-04-08T13:54:35.383Z" hostname="ip-192-168-0-220.ec2.internal" tests="1" failures="1" errors="0" skipped="0" time="0">
+        <testcase classname="tests/flow/orchestration/FlowOrchestrator.test.ts" name="tests/flow/orchestration/FlowOrchestrator.test.ts" time="0">
+            <failure message="Failed to load url ../../memory/contextual-memory.js (resolved id: ../../memory/contextual-memory.js) in /Users/jacob/projects/crewai-ts/src/flow/memory/FlowMemoryConnector.ts. Does the file exist?" type="Error">
+Error: Failed to load url ../../memory/contextual-memory.js (resolved id: ../../memory/contextual-memory.js) in /Users/jacob/projects/crewai-ts/src/flow/memory/FlowMemoryConnector.ts. Does the file exist?
+ ❯ loadAndTransform node_modules/vite/dist/node/chunks/dep-Dyl6b77n.js:51929:17
+            </failure>
+        </testcase>
+    </testsuite>
+    <testsuite name="tests/tools/cache/CacheTools.test.ts" timestamp="2025-04-08T13:54:35.383Z" hostname="ip-192-168-0-220.ec2.internal" tests="6" failures="1" errors="0" skipped="0" time="0.01">
+        <testcase classname="tests/tools/cache/CacheTools.test.ts" name="CacheTools &gt; stores and retrieves values" time="0.002">
+        </testcase>
+        <testcase classname="tests/tools/cache/CacheTools.test.ts" name="CacheTools &gt; returns undefined for non-existent keys" time="0">
+        </testcase>
+        <testcase classname="tests/tools/cache/CacheTools.test.ts" name="CacheTools &gt; deletes values from the cache" time="0.001">
+        </testcase>
+        <testcase classname="tests/tools/cache/CacheTools.test.ts" name="CacheTools &gt; uses separate namespaces" time="0.001">
+        </testcase>
+        <testcase classname="tests/tools/cache/CacheTools.test.ts" name="CacheTools &gt; respects TTL for cached values" time="0.001">
+        </testcase>
+        <testcase classname="tests/tools/cache/CacheTools.test.ts" name="CacheTools &gt; handles complex data structures" time="0.004">
+            <failure message="expected 2025-04-08T13:55:35.075Z to be type of &apos;string&apos;" type="AssertionError">
+AssertionError: expected 2025-04-08T13:55:35.075Z to be type of &apos;string&apos;
+
+- Expected
++ Received
+
+- string
++ object
+
+ ❯ tests/tools/cache/CacheTools.test.ts:166:41
             </failure>
         </testcase>
     </testsuite>

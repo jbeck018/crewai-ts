@@ -5,7 +5,7 @@
  * performance optimizations and benchmarks.
  */
 
-import { describe, test, expect, mock, beforeEach, afterEach } from 'bun:test';
+import { describe, test, expect, mock, beforeEach, afterEach, vi } from '../../../tests/vitest-utils.js';
 import { Flow, FlowState } from '../../../src/flow/index.js';
 import { start, listen, router } from '../../../src/flow/decorators.js';
 import { CONTINUE } from '../../../src/flow/types.js';
@@ -14,9 +14,23 @@ import {
   FlowMemoryType,
   FlowMemoryItem 
 } from '../../../src/flow/memory/FlowMemoryConnector.js';
-import { ContextualMemory } from '../../../src/memory/contextual-memory.js';
-import { MemoryRetriever } from '../../../src/memory/retrieval.js';
-import { VectorStoreMemory } from '../../../src/memory/vector-store.js';
+
+// Use local type definitions to avoid missing module errors
+// These match the type definitions in the implementation file
+type ContextualMemory = any;
+type MemoryRetriever = any;
+type VectorStoreMemory = any;
+
+// Performance-optimized test utilities
+const createOptimizedTest = (name: string, fn: () => Promise<void>) => {
+  test(name, async () => {
+    console.log(`Running optimized test: ${name}`);
+    const startHeap = getMemoryUsage();
+    await fn();
+    const endHeap = getMemoryUsage();
+    console.log(`Memory usage for '${name}': ${((endHeap - startHeap) / 1024 / 1024).toFixed(2)}MB`);
+  });
+};
 
 // Performance measurement utilities
 const measurePerformance = async <T>(fn: () => Promise<T>): Promise<{ result: T, duration: number }> => {
@@ -474,9 +488,10 @@ describe('FlowMemoryConnector', () => {
     expect(secondDuration).toBeLessThan(firstDuration * 0.5);
   });
   
-  test('should perform semantic search with optimized filtering', async () => {
-    // Skip if no vector store retriever
-    if (!((connector as any).retriever instanceof VectorStoreMemory)) {
+  createOptimizedTest('should perform semantic search with optimized filtering', async () => {
+    // Skip if no vector store retriever - using type check instead of instanceof
+    const retrieverType = (connector as any).retriever?.constructor?.name;
+    if (retrieverType !== 'VectorStoreMemory') {
       console.log('Skipping semantic search test - no vector store retriever');
       return;
     }

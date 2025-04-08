@@ -148,7 +148,7 @@ export class RunCrewCommand extends Command {
    * Parse command line arguments for the run-crew command
    * Optimized for handling various argument formats
    */
-  protected parseArgs(args: string[]): { 
+  protected override parseArgs(args: string[]): { 
     crewPath?: string;
     input?: string;
     verbose?: boolean;
@@ -217,7 +217,8 @@ export class RunCrewCommand extends Command {
     // Cache crew class checks for performance
     const classCache = new WeakMap<any, boolean>();
     if (classCache.has(cls)) {
-      return classCache.get(cls);
+      // Add explicit null check to handle boolean | undefined type issue
+      return classCache.get(cls) ?? false;
     }
     
     // Not a constructor function or class

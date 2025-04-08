@@ -310,11 +310,18 @@ export class Knowledge {
       const entries = Array.from(this.queryCache.entries());
       entries.sort((a, b) => a[1].timestamp - b[1].timestamp);
       
-      // Remove the oldest 20% of entries
+      // Performance-optimized cache cleanup with proper null safety
       const entriesToRemove = Math.ceil(MAX_CACHE_ENTRIES * 0.2);
-      for (let i = 0; i < entriesToRemove; i++) {
-        if (entries[i]) {
-          this.queryCache.delete(entries[i][0]);
+      
+      // First filter valid entries to avoid null checks in the loop - better performance
+      const validEntries = entries.filter(entry => entry && entry[0] !== undefined);
+      
+      // Remove the oldest 20% of entries safely
+      for (let i = 0; i < Math.min(entriesToRemove, validEntries.length); i++) {
+        // Safe delete with definite assignment and type assertion
+        const entry = validEntries[i];
+        if (entry && entry[0] !== undefined) {
+          this.queryCache.delete(entry[0]);
         }
       }
     }

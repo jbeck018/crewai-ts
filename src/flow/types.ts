@@ -1,7 +1,19 @@
 /**
- * Types for the Flow System
+ * Types for the Flow System - harmonized with Python crewAI implementation
  */
 import { FlowState } from './FlowState.js';
+
+// Flow core type definitions
+export type FlowId = string;
+export type FlowStatus = 'pending' | 'running' | 'completed' | 'failed' | 'canceled';
+export type FlowNode = string; // Represents a node in the flow graph
+
+// Base Flow interface for improved type checking
+export interface Flow<T extends FlowState = FlowState> {
+  readonly state: T;
+  run(): Promise<any>;
+  reset(): void;
+}
 
 // Type for condition functions that determine when methods are triggered
 export type ConditionFunction = () => boolean;
@@ -13,7 +25,23 @@ export type ComplexCondition = {
   methods: Array<string>;
 };
 
+// Full condition type for compatibility with Python version
 export type Condition = SimpleCondition | ComplexCondition | ConditionFunction;
+
+// Error types for compatibility with Python error handling
+export class FlowExecutionError extends Error {
+  constructor(message: string, public readonly methodName?: string) {
+    super(message);
+    this.name = 'FlowExecutionError';
+  }
+}
+
+export class FlowValidationError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'FlowValidationError';
+  }
+}
 
 // Result of a method execution
 export interface MethodExecutionResult {
@@ -75,6 +103,14 @@ export interface FlowMethodMetadata {
   isListener?: boolean;
   isRouter?: boolean;
   condition?: Condition;
+}
+
+// Node representing a method in the flow dependency graph
+export interface FlowMethodNode {
+  name: string;
+  dependencies?: string[];
+  metadata?: FlowMethodMetadata;
+  executed?: boolean;
 }
 
 // Flow configuration options

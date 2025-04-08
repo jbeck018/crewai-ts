@@ -125,50 +125,62 @@ export class HierarchicalManager {
       Based on task dependencies, priorities, and potential for parallelization, create an execution plan.
       Your plan should include:
       1. The optimal order of task execution (provide task IDs in sequence)
-      2. Any tasks that can be executed in parallel (grouped by parallel batch number)
-      3. Which task results are significant and should be included in the context for subsequent tasks
+      2. Any tasks that can be executed in parallel (group them by numbers)
+      3. Which task results should be included in the context for subsequent tasks
       4. Whether a final synthesis of all results is required
+
+      For parallelization, group task IDs that can run concurrently and assign each group a number.
       
-      Return your plan in JSON format with the following structure:
+      Your response should be in JSON format:
       {
-        "taskOrder": ["taskId1", "taskId2", parallelGroupNumber, "taskId4"],
-        "parallelGroups": { "1": ["taskId3", "taskId5"] },
-        "significantTasks": ["taskId1", "taskId3"],
-        "synthesisRequired": true
+        "taskOrder": ["task-id-1", 1, "task-id-3", ...],
+        "parallelGroups": { "1": ["task-id-2", "task-id-4"], ... },
+        "significantTasks": ["task-id-1", "task-id-3", ...],
+        "synthesisRequired": true/false
       }
       
       Where:
-      - taskOrder is an array of task IDs or parallel group numbers in execution sequence
-      - parallelGroups maps group numbers to arrays of task IDs that can run in parallel
-      - significantTasks lists tasks whose results should be included in context for later tasks
-      - synthesisRequired indicates if a final synthesis of all results is needed
+      - "taskOrder" is the sequence of execution, with numbers representing parallel groups
+      - "parallelGroups" maps group numbers to arrays of task IDs that can run in parallel
+      - "significantTasks" lists tasks whose results should be included in context
+      - "synthesisRequired" indicates if a final synthesis of all results is needed
+
+      Current context: ${context}
     `;
     
-    // Execute the planning task with the manager
-    const executionContext: TaskExecutionContext = {
-      task: planningTask,
-      context: context ? context + '\n\n' + planPrompt : planPrompt,
-      tools: []
-    };
-    
-    const planResult = await manager.executeTask(
-      executionContext.task as any,
-      executionContext.context,
-      executionContext.tools
-    );
-    
-    // Parse the execution plan result
     try {
-      // Extract the JSON plan from the result
-      const result = planResult.output;
-      const jsonMatch = result.match(/```(?:json)?\n(.+?)\n```/s) || 
-                       result.match(/{\s*"taskOrder":.+}/s);
+      // Execute the planning task
+      const executionContext: TaskExecutionContext = {
+        task: planningTask,
+        context: planPrompt,
+        tools: []
+      };
       
-      const planJson = jsonMatch 
-        ? jsonMatch[1] || jsonMatch[0]
-        : result;
+      // Use the executeTask method defined in BaseAgent interface
+      const planningResult = await manager.executeTask(
+        { id: 'planning-task', description: planningTask.description, agent: manager } as Task,
+        planPrompt,
+        []
+      );
+      
+      if (!planningResult || !planningResult.output) {
+        throw new Error('Planning failed: No output from manager agent');
+      }
+      
+      // Parse and validate the execution plan
+      let plan: ExecutionPlan;
+      try {
+        // Extract JSON from the response (in case there's additional text)
+        const jsonMatch = planningResult.output.match(/\{[\s\S]*\}/);
+        if (!jsonMatch) {
+          throw new Error('No valid JSON found in planning output');
+        }
         
-      const plan = JSON.parse(planJson);
+        plan = JSON.parse(jsonMatch[0]);
+      } catch (parseError) {
+        console.error('Error parsing plan JSON:', parseError);
+        throw new Error(`Invalid execution plan format: ${(parseError as Error).message}`);
+      }
       
       // Validate the plan structure
       if (!plan.taskOrder || !Array.isArray(plan.taskOrder)) {
@@ -245,16 +257,18 @@ export class HierarchicalManager {
           const taskId = group[i];
           const output = parallelResults[i];
           
-          // Mark task as completed
-          completedTaskIds.add(taskId);
-          
-          // Add to context if it's significant (determined by manager)
-          const significant = plan.significantTasks?.includes(taskId) ?? true;
-          if (significant && output && output.result) {
-            overallContext += `\n\nTask result: ${output.result}`;
+          // Mark task as completed with type safety
+          if (taskId && typeof taskId === 'string') {
+            completedTaskIds.add(taskId);
             
-            // Update potential final output
-            finalOutput = output.result;
+            // Add to context if it's significant (determined by manager)
+            const significant = (taskId && plan.significantTasks?.includes(taskId)) ?? true;
+            if (significant && output && output.result) {
+              overallContext += `\n\nTask result: ${output.result}`;
+              
+              // Update potential final output
+              finalOutput = output.result;
+            }
           }
         }
       } else if (typeof item === 'string') {
