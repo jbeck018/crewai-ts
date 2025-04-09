@@ -1,7 +1,9 @@
 # Jekyll configuration for GitHub Pages
-remote_theme: pages-themes/cayman@v0.2.0
+remote_theme: just-the-docs
 plugins:
 - jekyll-remote-theme
+
+# Theme docs: https://just-the-docs.com/docs/configuration/
 
 # Site settings
 title: CrewAI TypeScript Documentation
