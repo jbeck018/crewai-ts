@@ -1,5 +1,5 @@
 # Jekyll configuration for GitHub Pages
-remote_theme: just-the-docs
+remote_theme: just-the-docs/just-the-docs
 plugins:
 - jekyll-remote-theme
 
@@ -7,9 +7,79 @@ plugins:
 
 # Site settings
 title: CrewAI TypeScript Documentation
-description: Documentation for the TypeScript implementation of CrewAI
+description: Documentation for the TypeScript implementation of CrewAI with optimized memory and performance
+
+# Color scheme - light by default, but allows dark mode toggle
+color_scheme: light
+enable_dark_mode: true
+
+# Set theme color variables
+# Light mode colors
+light_theme_color: "#264caf"
+
+# Dark mode colors
+dark_theme_color: "#106cbc"
+
+# Theme settings
+enable_user_theme_switch: true
+default_theme_mode: light
+
+# Enable search
+search_enabled: true
+
+# Enable copy code button for code blocks
+enable_copy_code_button: true
+
+# Enable anchor links for headings
+heading_anchors: true
+
+# Collections for organized documentation
+collections:
+  concepts:
+    permalink: "/:collection/:path/"
+    output: true
+  examples:
+    permalink: "/:collection/:path/"
+    output: true
+
+# Default layout
+defaults:
+  - scope:
+      path: ""
+      type: concepts
+    values:
+      layout: default
+  - scope:
+      path: ""
+      type: examples
+    values:
+      layout: default
+
+# Enable callouts
+callouts:
+  note:
+    title: Note
+    color: blue
+  warning:
+    title: Warning
+    color: yellow
+  important:
+    title: Important
+    color: red
+  optimization:
+    title: Optimization
+    color: green
 
 # Navigation
 show_downloads: true
 github:
   repository_url: https://github.com/joaomdmoura/crewai-ts
+
+# Aux links (for additional navigation)
+aux_links:
+  "CrewAI TypeScript on GitHub":
+    - "https://github.com/joaomdmoura/crewai-ts"
+
+# Back to top link
+back_to_top: true
+back_to_top_text: "Back to top"

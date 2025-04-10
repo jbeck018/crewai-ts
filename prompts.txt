@@ -1,0 +1,4 @@
+Great, make sure to update the @TODO.md, confirm what we are bulding by looking at the similar pythong functionality and then implement it
+
+
+Great, now look at the @TODO.md for your next task, confirm what we are bulding by looking at the similar pythong functionality and then implement it

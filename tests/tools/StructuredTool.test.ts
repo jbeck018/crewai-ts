@@ -1,11 +1,16 @@
 /**
- * Tests for the StructuredTool implementation
- * Optimized for fast execution and comprehensive coverage
+ * Tests for the enhanced StructuredTool implementation
+ * Includes tests for all advanced features and memory optimizations
  */
 
 import { z } from 'zod';
 import { expect, test, describe, vi, beforeEach } from 'vitest';
-import { createStructuredTool, StructuredTool } from '../../src/tools/StructuredTool.js';
+import { 
+  createStructuredTool, 
+  StructuredTool,
+  createToolFromFunction, 
+  createToolsFromFunctions 
+} from '../../src/tools/StructuredTool.js';
 
 describe('StructuredTool', () => {
   // Test schemas for optimal validation performance
@@ -175,5 +180,119 @@ describe('StructuredTool', () => {
     
     expect(result.success).toBe(false);
     expect(result.error).toContain('Test error');
+  });
+  
+  // Tests for new enhanced functionality
+  describe('Enhanced StructuredTool Features', () => {
+    test('creates tool from function using static fromFunction method', () => {
+      const func = async ({ text, number }: { text: string, number?: number }) => {
+        return {
+          result: `Processed: ${text}${number !== undefined ? ` (${number})` : ''}`,
+          processed: true
+        };
+      };
+      
+      const tool = StructuredTool.fromFunction(func, {
+        name: 'function_tool',
+        description: 'A tool created from a function',
+        inputSchema: inputSchema,
+        outputSchema: outputSchema
+      });
+      
+      expect(tool).toBeInstanceOf(StructuredTool);
+      expect(tool.getMetadata().name).toBe('function_tool');
+    });
+    
+    test('creates tool using createToolFromFunction helper', async () => {
+      // Simple synchronous function
+      const syncFunc = ({ a, b }: { a: number, b: number }) => a + b;
+      
+      const tool = createToolFromFunction(syncFunc, {
+        name: 'add',
+        description: 'Add two numbers',
+        resultAsAnswer: true
+      });
+      
+      expect(tool).toBeInstanceOf(StructuredTool);
+      expect(tool.isDirectAnswer()).toBe(true);
+      
+      const result = await tool.execute({ a: 2, b: 3 });
+      expect(result.success).toBe(true);
+      expect(result.result).toBe(5);
+    });
+    
+    test('creates multiple tools with createToolsFromFunctions', () => {
+      const functions = {
+        add: ({ a, b }: { a: number, b: number }) => a + b,
+        multiply: ({ a, b }: { a: number, b: number }) => a * b,
+        join: ({ strings }: { strings: string[] }) => strings.join(' ')
+      };
+      
+      const tools = createToolsFromFunctions(functions, {
+        memoryOptimizationLevel: 2
+      });
+      
+      expect(Object.keys(tools)).toEqual(['add', 'multiply', 'join']);
+      expect(tools.add).toBeInstanceOf(StructuredTool);
+      expect(tools.multiply).toBeInstanceOf(StructuredTool);
+      expect(tools.join).toBeInstanceOf(StructuredTool);
+    });
+    
+    test('handles both async and sync functions', async () => {
+      // Sync function
+      const syncFunc = ({ x }: { x: number }) => x * 2;
+      const syncTool = createToolFromFunction(syncFunc, { name: 'sync_tool' });
+      
+      // Async function
+      const asyncFunc = async ({ x }: { x: number }) => {
+        return new Promise<number>(resolve => {
+          setTimeout(() => resolve(x * 3), 10);
+        });
+      };
+      const asyncTool = createToolFromFunction(asyncFunc, { name: 'async_tool' });
+      
+      // Test sync execution
+      const syncResult = await syncTool.execute({ x: 5 });
+      expect(syncResult.success).toBe(true);
+      expect(syncResult.result).toBe(10);
+      
+      // Test async execution
+      const asyncResult = await asyncTool.execute({ x: 5 });
+      expect(asyncResult.success).toBe(true);
+      expect(asyncResult.result).toBe(15);
+    });
+    
+    test('supports direct answer mode', async () => {
+      const func = ({ query }: { query: string }) => `Answer: ${query}`;
+      
+      // Create one tool with resultAsAnswer true
+      const directTool = createToolFromFunction(func, {
+        name: 'direct_tool',
+        resultAsAnswer: true
+      });
+      
+      // Create another tool with resultAsAnswer false
+      const indirectTool = createToolFromFunction(func, {
+        name: 'indirect_tool',
+        resultAsAnswer: false
+      });
+      
+      expect(directTool.isDirectAnswer()).toBe(true);
+      expect(indirectTool.isDirectAnswer()).toBe(false);
+    });
+    
+    test('provides schema information for LLM consumption', () => {
+      const tool = createToolFromFunction(
+        ({ text, number }: { text: string, number?: number }) => `${text}: ${number}`,
+        {
+          name: 'schema_tool',
+          inputSchema: inputSchema
+        }
+      );
+      
+      const schema = tool.getArgSchemaForLLM();
+      expect(schema).toBeDefined();
+      // Actual schema structure will depend on zod's output format
+    });
   });
 });

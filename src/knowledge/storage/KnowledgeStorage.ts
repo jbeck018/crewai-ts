@@ -62,10 +62,28 @@ export class KnowledgeStorage extends BaseKnowledgeStorage {
   private initialized = false;
 
   /**
-   * In-memory storage for fast access
+   * Tiered storage implementation with hot/warm/cold access patterns
+   * - hotCache: Most frequently accessed chunks for immediate access
+   * - warmStorage: Recently accessed chunks still kept in memory
+   * - coldStorage: All chunks (complete collection)
    * @private
    */
-  private chunks = new Map<string, KnowledgeChunk>();
+  private hotCache = new Map<string, KnowledgeChunk>(); // Frequently accessed
+  private warmStorage = new Map<string, KnowledgeChunk>(); // Recently accessed
+  private coldStorage = new Map<string, KnowledgeChunk>(); // Complete collection
+  
+  /**
+   * Access frequency tracking for implementing LFU (Least Frequently Used) policy
+   * @private
+   */
+  private accessFrequency = new Map<string, number>();
+  
+  /**
+   * Content hash map for fast content-based deduplication
+   * Maps content hash to chunk ID
+   * @private
+   */
+  private contentHashMap = new Map<string, string>();
 
   /**
    * Cache for query results with LRU eviction
@@ -145,14 +163,32 @@ export class KnowledgeStorage extends BaseKnowledgeStorage {
 
   /**
    * Add a single knowledge chunk to the storage
+   * Implements optimized storage with content deduplication
    * @param chunk - Knowledge chunk to add
    */
   async addChunk(chunk: KnowledgeChunk): Promise<void> {
     await this.ensureInitialized();
-
+    
     try {
+      // Skip if content is missing
+      if (!chunk.content) {
+        console.warn('Skipping chunk with no content');
+        return;
+      }
+      
+      // Generate content hash for deduplication
+      const contentHash = this.generateContentHash(chunk.content);
+      
+      // Check for existing content
+      const existingId = this.contentHashMap.get(contentHash);
+      if (existingId) {
+        // Content already exists, we can skip this chunk
+        console.debug(`Skipping duplicate content with hash ${contentHash}`);
+        return;
+      }
+      
       // Generate embeddings if not already present
-      if (!chunk.embedding && chunk.content) {
+      if (!chunk.embedding) {
         const embeddings = await this.generateEmbeddings([chunk.content]);
         if (embeddings && embeddings.length > 0) {
           chunk.embedding = embeddings[0];
@@ -164,10 +200,14 @@ export class KnowledgeStorage extends BaseKnowledgeStorage {
         chunk.id = generateContentId(chunk.content);
       }
 
-      // Store in memory map
-      this.chunks.set(chunk.id, chunk);
-
-      // In a real implementation, this would also store the chunk in chromadb or another vector database
+      // Store content hash mapping for future deduplication
+      this.contentHashMap.set(contentHash, chunk.id);
+      
+      // Store in cold storage (complete collection)
+      this.coldStorage.set(chunk.id, chunk);
+      
+      // Clear query cache for this specific chunk
+      this.queryCache.delete(chunk.id);
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       throw new Error(`Failed to add knowledge chunk: ${errorMessage}`);
@@ -177,6 +217,7 @@ export class KnowledgeStorage extends BaseKnowledgeStorage {
   /**
    * Add multiple knowledge chunks in a batch operation
    * Implements optimized batch processing for better performance
+   * with content deduplication and tiered storage
    * @param chunks - Array of knowledge chunks to add
    */
   async addChunks(chunks: KnowledgeChunk[]): Promise<void> {
@@ -189,41 +230,97 @@ export class KnowledgeStorage extends BaseKnowledgeStorage {
       const BATCH_SIZE = 100; // Optimal batch size for vector operations
       const batches = this.createBatches(chunks, BATCH_SIZE);
       
+      // Track statistics for performance monitoring
+      let totalChunks = 0;
+      let uniqueChunks = 0;
+      let duplicateChunks = 0;
+      
+      // Content hash set for deduplication within this batch operation
+      const processedContentHashes = new Set<string>();
+      
       for (const batch of batches) {
-        // Step 1: Generate embeddings for chunks without embeddings
-        const chunksNeedingEmbeddings = batch
-          .filter((chunk: KnowledgeChunk) => !chunk.embedding && chunk.content)
-          .map((chunk: KnowledgeChunk) => chunk.content);
-          
-        if (chunksNeedingEmbeddings.length > 0) {
-          const embeddings = await this.generateEmbeddings(chunksNeedingEmbeddings);
-          
-          // Assign embeddings to the original chunks
-          let embeddingIndex = 0;
-          for (let i = 0; i < batch.length; i++) {
-            const chunk = batch[i];
-            if (chunk && !chunk.embedding && chunk.content && embeddingIndex < embeddings.length) {
-              chunk.embedding = embeddings[embeddingIndex++];
-            }
-          }
-        }
+        // Step 1: Perform content-based deduplication and prepare chunks needing embeddings
+        const dedupedBatch: KnowledgeChunk[] = [];
+        const chunksNeedingEmbeddings: string[] = [];
+        const chunkIndices: number[] = [];
         
-        // Step 2: Ensure all chunks have IDs
         for (const chunk of batch) {
+          totalChunks++;
+          
+          if (!chunk.content) {
+            // Skip chunks with no content
+            continue;
+          }
+          
+          // Generate content hash for deduplication
+          const contentHash = this.generateContentHash(chunk.content);
+          
+          // Check for existing content in our global map
+          const existingId = this.contentHashMap.get(contentHash);
+          if (existingId) {
+            // Duplicate content detected, skip this chunk
+            duplicateChunks++;
+            continue;
+          }
+          
+          // Check for duplicates within this batch
+          if (processedContentHashes.has(contentHash)) {
+            duplicateChunks++;
+            continue;
+          }
+          
+          // Mark as processed to avoid duplicates within this batch
+          processedContentHashes.add(contentHash);
+          
+          // Ensure chunk has an ID
           if (!chunk.id) {
             chunk.id = generateContentId(chunk.content);
           }
           
-          // Step 3: Store in memory map
-          this.chunks.set(chunk.id, chunk);
+          // Store content hash mapping for future deduplication
+          this.contentHashMap.set(contentHash, chunk.id);
+          
+          // Add to deduped batch
+          dedupedBatch.push(chunk);
+          uniqueChunks++;
+          
+          // Check if this chunk needs an embedding
+          if (!chunk.embedding) {
+            chunksNeedingEmbeddings.push(chunk.content);
+            chunkIndices.push(dedupedBatch.length - 1);
+          }
         }
         
-        // In a real implementation, this would batch store in chromadb or another vector database
+        // Step 2: Generate embeddings in a single batch for better performance
+        if (chunksNeedingEmbeddings.length > 0) {
+          const embeddings = await this.generateEmbeddings(chunksNeedingEmbeddings);
+          
+          // Assign embeddings to the corresponding chunks
+          for (let i = 0; i < chunkIndices.length && i < embeddings.length; i++) {
+            const index = chunkIndices[i];
+            // Extra safety check to ensure index is valid
+            if (typeof index === 'number' && index >= 0 && index < dedupedBatch.length) {
+                  // Type assertion to ensure safe usage
+              const embedding = embeddings[i];
+              const targetChunk = dedupedBatch[index];
+              if (Array.isArray(embedding) && targetChunk) {
+                targetChunk.embedding = embedding;
+              }
+            }
+          }
+        }
+        
+        // Step 3: Store chunks in tiered storage
+        for (const chunk of dedupedBatch) {
+          // Add to cold storage (complete collection)
+          this.coldStorage.set(chunk.id, chunk);
+        }
       }
       
       // Clear query cache since the knowledge base has changed
       this.queryCache.clear();
       
+      console.log(`Knowledge batch processing: Added ${uniqueChunks} unique chunks out of ${totalChunks} total (${duplicateChunks} duplicates removed)`);
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       throw new Error(`Failed to add knowledge chunks in batch: ${errorMessage}`);
@@ -466,16 +563,33 @@ export class KnowledgeStorage extends BaseKnowledgeStorage {
   }
   
   /**
+   * Type guard to check if an object is a valid KnowledgeChunk
+   * This ensures type safety when working with potentially unknown types
+   * @param obj The object to check
+   * @returns True if the object is a valid KnowledgeChunk
+   */
+  private isKnowledgeChunk(obj: unknown): obj is KnowledgeChunk {
+    return (
+      obj !== null &&
+      typeof obj === 'object' &&
+      'id' in obj &&
+      typeof (obj as KnowledgeChunk).id === 'string' &&
+      'content' in obj &&
+      typeof (obj as KnowledgeChunk).content === 'string'
+    );
+  }
+
+  /**
    * Specialized dot product for Float32Array inputs
    * Uses aggressive loop unrolling with SIMD-friendly operations
    */
   /**
    * Convert any vector type to a standard number array for compatibility
    * Implements optimized conversion with cache utilization
-   * @param vector Input vector as Float32Array or number[]
+   * @param vector Input vector as Float32Array, number[] or unknown
    * @returns Standard number array representation
    */
-  private toNumberArray(vector: Float32Array | number[]): number[] {
+  private toNumberArray(vector: Float32Array | number[] | unknown): number[] {
     if (!vector) return [];
     
     if (vector instanceof Float32Array) {
@@ -504,7 +618,43 @@ export class KnowledgeStorage extends BaseKnowledgeStorage {
       
       return result;
     }
-    return vector;
+    
+    // Handle Array input with proper type safety
+    if (Array.isArray(vector)) {
+      // For regular arrays, ensure all elements are numbers with optimal type conversion
+      const length = vector.length;
+      const result = new Array<number>(length);
+      
+      // Manual unrolling for better performance on modern CPUs
+      // This optimization improves vectorization opportunities
+      const blockSize = 8;
+      let i = 0;
+    
+      // Process blocks of 8 elements at once
+      while (i + blockSize <= length) {
+        // Explicit type conversion for each element
+        result[i] = typeof vector[i] === 'number' ? vector[i] as number : Number(vector[i]);
+        result[i+1] = typeof vector[i+1] === 'number' ? vector[i+1] as number : Number(vector[i+1]);
+        result[i+2] = typeof vector[i+2] === 'number' ? vector[i+2] as number : Number(vector[i+2]);
+        result[i+3] = typeof vector[i+3] === 'number' ? vector[i+3] as number : Number(vector[i+3]);
+        result[i+4] = typeof vector[i+4] === 'number' ? vector[i+4] as number : Number(vector[i+4]);
+        result[i+5] = typeof vector[i+5] === 'number' ? vector[i+5] as number : Number(vector[i+5]);
+        result[i+6] = typeof vector[i+6] === 'number' ? vector[i+6] as number : Number(vector[i+6]);
+        result[i+7] = typeof vector[i+7] === 'number' ? vector[i+7] as number : Number(vector[i+7]);
+        i += blockSize;
+      }
+    
+      // Process remaining elements
+      while (i < length) {
+        result[i] = typeof vector[i] === 'number' ? vector[i] as number : Number(vector[i]);
+        i++;
+      }
+      
+      return result;
+    }
+  
+    // Default case: return empty array for unrecognized input types
+    return [];
   }
   
   private dotProductFloat32(a: Float32Array, b: Float32Array, len: number): number {
@@ -711,25 +861,27 @@ export class KnowledgeStorage extends BaseKnowledgeStorage {
     
     // Type guard to ensure type safety and optimize for performance
     if (vector instanceof Float32Array) {
-      // Use optimized loop unrolling for Float32Array
-      const blockSize = 4;
-      let i = 0;
+      // Using type-safe manual unrolling for performance optimization
+      // Process blocks of 4 elements at a time for better CPU cache utilization
+      // This approach maintains both type safety and performance
       
-      // Process blocks of 4 elements with loop unrolling
-      // All elements in Float32Array are guaranteed to be numbers, but add safety checks
-      while (i + blockSize <= length) {
-        // Float32Array values are always defined, but add safety for TypeScript type checking
-        if (i < length) vector[i] = vector[i]! * invMag;
-        if (i+1 < length) vector[i+1] = vector[i+1]! * invMag;
-        if (i+2 < length) vector[i+2] = vector[i+2]! * invMag;
-        if (i+3 < length) vector[i+3] = vector[i+3]! * invMag;
-        i += blockSize;
+      // Pre-compute loop bounds for optimization
+      const blockSize = 4;
+      const blockLoopLimit = length - (length % blockSize);
+      
+      // Optimized block processing with safe bounds checking
+      for (let i = 0; i < blockLoopLimit; i += blockSize) {
+        // TypeScript needs type assertions to recognize that these operations are safe
+        // Type assertions eliminate lint errors while maintaining optimized memory layout
+        vector[i] = Number(vector[i]) * invMag;
+        vector[i+1] = Number(vector[i+1]) * invMag;
+        vector[i+2] = Number(vector[i+2]) * invMag;
+        vector[i+3] = Number(vector[i+3]) * invMag;
       }
       
-      // Handle remaining elements
-      while (i < length) {
-        if (i < length) vector[i] = vector[i]! * invMag;
-        i++;
+      // Safe processing for remaining elements with explicit bounds check
+      for (let i = blockLoopLimit; i < length; i++) {
+        vector[i] = Number(vector[i]) * invMag;
       }
     } else {
       // For regular number arrays, ensure safe access with explicit checks and optimal performance
@@ -779,7 +931,8 @@ export class KnowledgeStorage extends BaseKnowledgeStorage {
       }
       
       // Get all chunks that satisfy the filter
-      let filteredChunks = Array.from(this.chunks.values());
+      // Get all chunks from coldStorage which contains the complete collection
+      let filteredChunks = Array.from(this.coldStorage.values());
       
       // Apply metadata filters if provided
       if (filter && Object.keys(filter).length > 0) {
@@ -790,14 +943,17 @@ export class KnowledgeStorage extends BaseKnowledgeStorage {
       // For multiple queries, we use the maximum similarity score
       const results: KnowledgeSearchResult[] = [];
       
+      // Ensure we're working with properly typed KnowledgeChunks
       for (const chunk of filteredChunks) {
-        if (!chunk.embedding) continue;
+        // Type guard to ensure we're working with KnowledgeChunk
+        if (!this.isKnowledgeChunk(chunk) || !chunk.embedding) continue;
         
         // Calculate maximum similarity across all query embeddings
         let maxScore = 0;
         for (const queryEmbedding of queryEmbeddings) {
-          // Convert embeddings to number[] for compatibility with all operations
-          const compatibleEmbedding = this.toNumberArray(chunk.embedding || []);
+          // Convert embeddings to strongly-typed number[] for compatibility with all operations
+          // This preserves both type safety and performance optimizations
+          const compatibleEmbedding = this.toNumberArray(chunk.embedding);
           const compatibleQueryEmbedding = this.toNumberArray(queryEmbedding);
           const score = this.calculateCosineSimilarity(compatibleQueryEmbedding, compatibleEmbedding);
           maxScore = Math.max(maxScore, score);
@@ -916,6 +1072,27 @@ export class KnowledgeStorage extends BaseKnowledgeStorage {
     }
     return Math.abs(hash);
   }
+  
+  /**
+   * Generate a content hash for deduplication
+   * Uses a fast algorithm optimized for memory efficiency
+   * @param content - Content to hash
+   * @returns Hash string
+   * @private
+   */
+  private generateContentHash(content: string): string {
+    // Simple but fast hashing algorithm for content-based IDs
+    let hash = 0;
+    // Use only the first 1000 characters for faster processing of large content
+    const sampleContent = content.substring(0, 1000);
+    
+    for (let i = 0; i < sampleContent.length; i++) {
+      const char = sampleContent.charCodeAt(i);
+      hash = ((hash << 5) - hash) + char;
+      hash = hash & hash; // Convert to 32-bit integer
+    }
+    return `${Math.abs(hash).toString(16)}`;
+  }
 
   /**
    * Reset the storage (clear all data)
@@ -924,8 +1101,12 @@ export class KnowledgeStorage extends BaseKnowledgeStorage {
     await this.ensureInitialized();
     
     try {
-      // Clear in-memory storage
-      this.chunks.clear();
+      // Clear all tiered storage structures
+      this.hotCache.clear();
+      this.warmStorage.clear();
+      this.coldStorage.clear();
+      this.contentHashMap.clear();
+      this.accessFrequency.clear();
       
       // Clear query cache
       this.queryCache.clear();
@@ -949,15 +1130,30 @@ export class KnowledgeStorage extends BaseKnowledgeStorage {
     if (!ids || ids.length === 0) return;
     
     try {
-      // Delete chunks from in-memory storage
+      // Delete chunks from all storage tiers
       for (const id of ids) {
-        this.chunks.delete(id);
+        // Get the chunk from cold storage to check its content hash
+        const chunk = this.coldStorage.get(id);
+        if (chunk && chunk.content) {
+          // Remove content hash mapping for better garbage collection
+          const contentHash = this.generateContentHash(chunk.content);
+          this.contentHashMap.delete(contentHash);
+        }
+        
+        // Remove from all tiers
+        this.hotCache.delete(id);
+        this.warmStorage.delete(id);
+        this.coldStorage.delete(id);
+        
+        // Clean up access frequency tracking
+        this.accessFrequency.delete(id);
       }
       
       // Clear query cache since the knowledge base has changed
       this.queryCache.clear();
       
       // In a real implementation, this would also delete from the vector database
+      console.log(`Deleted ${ids.length} chunks from collection ${this.collectionName}`);
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       throw new Error(`Failed to delete knowledge chunks: ${errorMessage}`);
@@ -965,7 +1161,8 @@ export class KnowledgeStorage extends BaseKnowledgeStorage {
   }
   
   /**
-   * Get chunks by ID
+   * Get chunks by ID with tiered access patterns
+   * Implements optimized fetching strategy with memory-efficient batch processing
    * @param ids - Array of chunk IDs to retrieve
    * @returns Array of knowledge chunks
    */
@@ -975,19 +1172,165 @@ export class KnowledgeStorage extends BaseKnowledgeStorage {
     if (!ids || ids.length === 0) return [];
     
     try {
-      const chunks: KnowledgeChunk[] = [];
+      // Use Maps for O(1) lookups and better memory efficiency
+      const resultMap = new Map<string, KnowledgeChunk>();
+      const missingIds = new Set<string>();
       
-      for (const id of ids) {
-        const chunk = this.chunks.get(id);
-        if (chunk) {
-          chunks.push(chunk);
+      // Filter out invalid IDs
+      const validIds = ids.filter(id => id !== null && id !== undefined);
+      
+      // OPTIMIZATION: Process in batches for better memory usage with large ID arrays
+      const BATCH_SIZE = 500;
+      const batchCount = Math.ceil(validIds.length / BATCH_SIZE);
+      
+      for (let batchIndex = 0; batchIndex < batchCount; batchIndex++) {
+        const startIdx = batchIndex * BATCH_SIZE;
+        const endIdx = Math.min(startIdx + BATCH_SIZE, validIds.length);
+        const batchIds = validIds.slice(startIdx, endIdx);
+        
+        // OPTIMIZATION: First pass - check hot cache (fastest) with minimal processing
+        for (const id of batchIds) {
+          const chunk = this.hotCache.get(id);
+          if (chunk) {
+            // Hot cache hit - increment counter and add to results
+            const currentFreq = this.accessFrequency.get(id) || 0;
+            this.accessFrequency.set(id, currentFreq + 1);
+            resultMap.set(id, chunk);
+          } else {
+            // Not in hot cache - track for next pass
+            missingIds.add(id);
+          }
+        }
+        
+        // OPTIMIZATION: Second pass - only check warm storage for IDs not in hot cache
+        const coldIds = new Set<string>();
+        for (const id of missingIds) {
+          const chunk = this.warmStorage.get(id);
+          if (chunk) {
+            // Update access metrics
+            const currentFreq = this.accessFrequency.get(id) || 0;
+            const newFreq = currentFreq + 1;
+            this.accessFrequency.set(id, newFreq);
+            
+            // OPTIMIZATION: Promote to hot cache if frequently accessed
+            if (newFreq >= 3) {
+              this.hotCache.set(id, chunk);
+              // Keep hot cache optimized for performance
+              this.manageHotCacheSize();
+            }
+            
+            resultMap.set(id, chunk);
+            missingIds.delete(id);
+          } else {
+            // Mark for cold storage check
+            coldIds.add(id);
+          }
+        }
+        
+        // OPTIMIZATION: Final pass - only check cold storage for remaining IDs
+        for (const id of coldIds) {
+          const chunk = this.coldStorage.get(id);
+          if (chunk) {
+            // Update metrics
+            const currentFreq = this.accessFrequency.get(id) || 0;
+            const newFreq = currentFreq + 1;
+            this.accessFrequency.set(id, newFreq);
+            
+            // OPTIMIZATION: Always promote from cold to warm storage on access
+            this.warmStorage.set(id, chunk);
+            
+            // OPTIMIZATION: Direct promotion to hot cache if frequently accessed
+            if (newFreq >= 3) {
+              this.hotCache.set(id, chunk);
+              this.manageHotCacheSize();
+            }
+            
+            resultMap.set(id, chunk);
+            missingIds.delete(id);
+          }
         }
       }
       
-      return chunks;
+      // Preserve original order of IDs in the result array with type safety
+      // First filter ensures we only process valid IDs that have results
+      // Map with type guard ensures we don't need non-null assertions
+      return validIds
+        .filter(id => typeof id === 'string' && resultMap.has(id))
+        .map(id => {
+          // Since we filtered for existence above, this is guaranteed to be defined
+          // But we'll add a fallback for complete type safety
+          const chunk = resultMap.get(id);
+          return chunk || null;
+        })
+        .filter((chunk): chunk is KnowledgeChunk => chunk !== null);
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       throw new Error(`Failed to get knowledge chunks: ${errorMessage}`);
+    }
+  }
+  
+  /**
+   * Manage hot cache size to maintain performance
+   * Uses LFU (Least Frequently Used) eviction policy with memory optimization
+   * @private
+   */
+  private manageHotCacheSize(): void {
+    const MAX_HOT_CACHE_SIZE = 100; // Optimal size for performance
+    
+    // Early exit if cache size is within limits
+    if (this.hotCache.size <= MAX_HOT_CACHE_SIZE) {
+      return;
+    }
+    
+    // Create frequency buckets for more efficient eviction
+    // This approach is faster than full sorting for large caches
+    const frequencyBuckets: Map<number, string[]> = new Map();
+    let minFrequency = Number.MAX_SAFE_INTEGER;
+    
+    // Organize items by access frequency
+    for (const id of this.hotCache.keys()) {
+      if (typeof id === 'string') { // Type safety check
+        const frequency = this.accessFrequency.get(id) || 0;
+        
+        // Track minimum frequency for quick eviction
+        minFrequency = Math.min(minFrequency, frequency);
+        
+        // Add to appropriate frequency bucket
+        const bucket = frequencyBuckets.get(frequency) || [];
+        bucket.push(id);
+        frequencyBuckets.set(frequency, bucket);
+      }
+    }
+    
+    // Calculate number of items to remove (20% of max size)
+    const removeCount = Math.ceil(MAX_HOT_CACHE_SIZE * 0.2);
+    let removedCount = 0;
+    
+    // Start removing from lowest frequency bucket
+    let currentFrequency = minFrequency;
+    
+    while (removedCount < removeCount && frequencyBuckets.size > 0) {
+      const bucket = frequencyBuckets.get(currentFrequency);
+      
+      if (bucket && bucket.length > 0) {
+        // Remove items from current frequency bucket
+        while (bucket.length > 0 && removedCount < removeCount) {
+          const id = bucket.pop();
+          if (id) { // Type safety check
+            this.hotCache.delete(id);
+            removedCount++;
+          }
+        }
+        
+        // Clean up empty buckets
+        if (bucket.length === 0) {
+          frequencyBuckets.delete(currentFrequency);
+        }
+      } else {
+        // Move to next frequency level if current bucket is empty
+        frequencyBuckets.delete(currentFrequency);
+        currentFrequency++;
+      }
     }
   }
   
@@ -999,7 +1342,8 @@ export class KnowledgeStorage extends BaseKnowledgeStorage {
     await this.ensureInitialized();
     
     try {
-      return Array.from(this.chunks.values());
+      // Return all chunks from cold storage (complete collection)
+      return Array.from(this.coldStorage.values());
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       throw new Error(`Failed to get all knowledge chunks: ${errorMessage}`);
@@ -1067,8 +1411,12 @@ export class KnowledgeStorage extends BaseKnowledgeStorage {
    */
   async close(): Promise<void> {
     try {
-      // Clear in-memory storage to free up resources
-      this.chunks.clear();
+      // Clear all storage tiers to free up resources
+      this.hotCache.clear();
+      this.warmStorage.clear();
+      this.coldStorage.clear();
+      this.contentHashMap.clear();
+      this.accessFrequency.clear();
       this.queryCache.clear();
       
       // Mark as uninitialized

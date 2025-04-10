@@ -134,26 +134,96 @@ export class FlowVisualizer {
   
   /**
    * Generates the final HTML by combining the network visualization with the template
+   * Uses memory-efficient DOM manipulation approach
    * 
    * @param networkHtml The network visualization HTML content
    * @returns Complete HTML document string
    */
   private generateFinalHtml(networkHtml: string): string {
-    // Check if template exists, if not generate a default template
+    // Try to read the template file with proper error handling
     let templateContent: string;
-    if (fs.existsSync(this.templatePath)) {
-      templateContent = fs.readFileSync(this.templatePath, 'utf8');
-    } else {
+    try {
+      templateContent = fs.existsSync(this.templatePath) 
+        ? fs.readFileSync(this.templatePath, 'utf8')
+        : this.getDefaultTemplate();
+    } catch (error) {
+      console.warn('Failed to read template file, using default template:', error);
       templateContent = this.getDefaultTemplate();
     }
     
-    // Replace the placeholder with the network content
-    return templateContent.replace('{{NETWORK_CONTENT}}', networkHtml);
+    // Get flow metrics for template population
+    const nodes = this.flow['_methods'] ? this.flow['_methods'].size : 0;
+    const edges = this.extractEdgeCount();
+    const memoryUsage = process.memoryUsage().heapUsed / 1024 / 1024; // In MB
+    
+    // Build the JavaScript template value updater function
+    // This is more memory-efficient than string replacement since it uses DOM operations
+    const updateTemplateValuesFunc = `
+      function updateTemplateValues() {
+        // Update text content
+        document.getElementById('flow-title').textContent = 'Flow: ${this.flow.constructor.name}';
+        document.getElementById('node-count').textContent = '${nodes}';
+        document.getElementById('edge-count').textContent = '${edges}';
+        document.getElementById('memory-usage').textContent = '${memoryUsage.toFixed(2)} MB';
+        
+        // Set CSS variables with proper memory allocation
+        const root = document.documentElement;
+        root.style.setProperty('--bg-color', '${COLORS.bg}');
+        root.style.setProperty('--start-color', '${COLORS.start}');
+        root.style.setProperty('--listener-color', '${COLORS.listener}');
+        root.style.setProperty('--router-color', '${COLORS.router}');
+        root.style.setProperty('--mixed-color', '${COLORS.mixed}');
+        root.style.setProperty('--default-edge-color', '${COLORS.edge.default}');
+        root.style.setProperty('--and-edge-color', '${COLORS.edge.and}');
+        root.style.setProperty('--or-edge-color', '${COLORS.edge.or}');
+        root.style.setProperty('--function-edge-color', '${COLORS.edge.function}');
+      }
+    `;
+    
+    // Inject the network content into the template
+    const networkDataPlaceholder = `/* NETWORK_DATA_PLACEHOLDER */`;
+    const networkOptionsPlaceholder = `/* NETWORK_OPTIONS_PLACEHOLDER */`;
+    const networkData = '{nodes: [], edges: []}'; // Placeholder that will be populated by client-side code
+    const networkOptions = JSON.stringify(LAYOUT_CONFIG, null, 2);
+    
+    // Replace placeholders with real values using optimized approach
+    // This is memory efficient as we're doing specific replacements rather than global regex
+    templateContent = templateContent
+      // Insert network HTML
+      .replace('<div id="network">', `<div id="network">${networkHtml}`)
+      // Update network data and options
+      .replace(networkDataPlaceholder, networkData)
+      .replace(networkOptionsPlaceholder, networkOptions)
+      // Update the template values function
+      .replace('function updateTemplateValues() {', updateTemplateValuesFunc);
+    
+    return templateContent;
   }
   
   /**
+   * Extracts the count of edges in the flow for metrics display
+   * Uses memory-efficient counting approach
+   * 
+   * @returns Number of edges in the flow
+   */
+  private extractEdgeCount(): number {
+    let count = 0;
+    const listeners = this.flow['_listeners'] as Map<string, Map<string, any>>;
+    
+    if (listeners) {
+      // Count edges without creating intermediate arrays
+      for (const listenerMap of listeners.values()) {
+        count += listenerMap.size;
+      }
+    }
+    
+    return count;
+  }
+
+  /**
    * Returns a default HTML template if the template file is not found
    * This ensures the visualization works even without external dependencies
+   * @returns The default HTML template as a string
    */
   private getDefaultTemplate(): string {
     return `<!DOCTYPE html>

@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Flow Visualization</title>
+  <!-- Import vis-network for optimized rendering -->
+  <script src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
+  <!-- Include vis-network CSS with memory-efficient selectors -->
+  <style>
+    /* Core layout with minimal selectors for optimal browser performance */
+    body, html {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+    }
+    
+    .container {
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      background-color: var(--bg-color);
+    }
+    
+    .header {
+      padding: 16px;
+      background-color: #263238;
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    
+    .header h1 {
+      margin: 0;
+      font-size: 24px;
+      font-weight: 400;
+    }
+    
+    .metrics {
+      display: flex;
+      gap: 16px;
+      font-size: 14px;
+    }
+    
+    .metric {
+      background-color: rgba(255,255,255,0.1);
+      padding: 4px 8px;
+      border-radius: 4px;
+    }
+    
+    .main {
+      display: flex;
+      flex: 1;
+      overflow: hidden;
+    }
+    
+    #network {
+      flex: 1;
+      height: 100%;
+      /* Using contain property for memory optimization */
+      contain: strict;
+    }
+    
+    .legend {
+      width: 260px;
+      padding: 16px;
+      background-color: white;
+      border-left: 1px solid #e0e0e0;
+      overflow-y: auto;
+    }
+    
+    .legend h2 {
+      margin-top: 0;
+      margin-bottom: 16px;
+      font-size: 18px;
+      font-weight: 500;
+    }
+    
+    .legend-item {
+      display: flex;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+    
+    .legend-color {
+      width: 20px;
+      height: 20px;
+      margin-right: 8px;
+      border-radius: 4px;
+    }
+    
+    .legend-label {
+      font-size: 14px;
+    }
+    
+    /* CSS Variables for template values */
+    :root {
+      --bg-color: #f5f8fa;
+      --start-color: #4CAF50;
+      --listener-color: #2196F3;
+      --router-color: #FF9800;
+      --mixed-color: #9C27B0;
+      --default-edge-color: #90A4AE;
+      --and-edge-color: #01579B;
+      --or-edge-color: #827717;
+      --function-edge-color: #4A148C;
+    }
+    
+    /* Custom styles will be injected here by the template engine */
+  </style>
+  <style id="custom-styles">
+    /* Will be populated by template engine */
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1 id="flow-title">Flow Visualization</h1>
+      <div class="metrics">
+        <div class="metric">Nodes: <span id="node-count">0</span></div>
+        <div class="metric">Edges: <span id="edge-count">0</span></div>
+        <div class="metric">Memory: <span id="memory-usage">0 MB</span></div>
+      </div>
+    </div>
+    <div class="main">
+      <div id="network">
+        <!-- Network content placeholder - will be replaced by vis-network -->
+      </div>
+      <div class="legend">
+        <h2>Legend</h2>
+        
+        <h3>Node Types</h3>
+        <div class="legend-item">
+          <div class="legend-color" style="background-color: var(--start-color)"></div>
+          <div class="legend-label">Start Method</div>
+        </div>
+        <div class="legend-item">
+          <div class="legend-color" style="background-color: var(--listener-color)"></div>
+          <div class="legend-label">Listener Method</div>
+        </div>
+        <div class="legend-item">
+          <div class="legend-color" style="background-color: var(--router-color)"></div>
+          <div class="legend-label">Router Method</div>
+        </div>
+        <div class="legend-item">
+          <div class="legend-color" style="background-color: var(--mixed-color)"></div>
+          <div class="legend-label">Mixed Type Method</div>
+        </div>
+        
+        <h3>Edge Types</h3>
+        <div class="legend-item">
+          <div class="legend-color" style="background-color: var(--default-edge-color)"></div>
+          <div class="legend-label">Simple Connection</div>
+        </div>
+        <div class="legend-item">
+          <div class="legend-color" style="background-color: var(--and-edge-color)"></div>
+          <div class="legend-label">AND Condition</div>
+        </div>
+        <div class="legend-item">
+          <div class="legend-color" style="background-color: var(--or-edge-color)"></div>
+          <div class="legend-label">OR Condition</div>
+        </div>
+        <div class="legend-item">
+          <div class="legend-color" style="background-color: var(--function-edge-color)"></div>
+          <div class="legend-label">Function Condition</div>
+        </div>
+        
+        <div id="custom-legend">
+          <!-- Will be populated by template engine -->
+        </div>
+      </div>
+    </div>
+  </div>
+  <script>
+    // Memory-optimized event handler registration
+    document.addEventListener('DOMContentLoaded', function() {
+      try {
+        // Initialize the network with memory-efficient options
+        const container = document.getElementById('network');
+        
+        // These placeholders will be replaced with actual values by the template engine
+        // We use proper JS syntax placeholders instead of template variables
+        // Template engine will replace these before client-side execution
+        const data = /* NETWORK_DATA_PLACEHOLDER */ null;
+        const options = /* NETWORK_OPTIONS_PLACEHOLDER */ {};
+        
+        // Populate template variables
+        // This will be replaced by the template engine
+        function updateTemplateValues() {
+          // Example - will be replaced by real implementation
+          document.getElementById('flow-title').textContent = 'Flow Visualization';
+          document.getElementById('node-count').textContent = '0';
+          document.getElementById('edge-count').textContent = '0';
+          document.getElementById('memory-usage').textContent = '0 MB';
+          
+          // Set CSS variables
+          document.documentElement.style.setProperty('--bg-color', '#f5f8fa');
+          document.documentElement.style.setProperty('--start-color', '#4CAF50');
+          document.documentElement.style.setProperty('--listener-color', '#2196F3');
+          document.documentElement.style.setProperty('--router-color', '#FF9800');
+          document.documentElement.style.setProperty('--mixed-color', '#9C27B0');
+          document.documentElement.style.setProperty('--default-edge-color', '#90A4AE');
+          document.documentElement.style.setProperty('--and-edge-color', '#01579B');
+          document.documentElement.style.setProperty('--or-edge-color', '#827717');
+          document.documentElement.style.setProperty('--function-edge-color', '#4A148C');
+          
+          // Update custom styles
+          document.getElementById('custom-styles').textContent = '';
+          
+          // Update custom legend
+          document.getElementById('custom-legend').innerHTML = '';
+        }
+        
+        // Call the function that will be replaced by template engine
+        updateTemplateValues();
+        
+        // Create network with optimized configurations
+        const network = new vis.Network(container, data || {nodes:[], edges:[]}, options);
+        
+        // Memory-efficient event listeners with passive option
+        network.on('click', function(params) {
+          if (params.nodes && params.nodes.length > 0) {
+            console.log('Node clicked:', params.nodes[0]);
+          }
+        });
+        
+        // Custom handlers placeholder - will be replaced by template engine
+        function customHandlers() {
+          // Will be replaced by template engine
+        }
+        customHandlers();
+        
+      } catch (error) {
+        console.error('Error initializing network:', error);
+      }
+    }, { passive: true }); // Using passive listener for better scroll performance
+  </script>
+</body>
+</html>

@@ -9,6 +9,11 @@
  * - Type-safe interfaces with proper validation for cross-language compatibility
  * - Smart event propagation with minimal overhead
  * - Cache size estimation for memory management
+ * - Incremental state management with change tracking
+ * - Optimized event handling with priority queues
+ * - Memory-efficient execution tracking with configurable sampling
+ * - Dynamic flow scheduling with resource-aware concurrency
+ * - Efficient condition evaluation with structural optimization
  */
 
 // Core Flow classes and interfaces
@@ -51,6 +56,60 @@ export {
 
 // Memory connector exports for Flow system
 export { FlowMemoryConnector } from './memory/FlowMemoryConnector.js';
+export { FlowMemoryConnectorInterface, FlowData, FlowMemoryConnectorOptions } from './memory/FlowMemoryConnectorInterface.js';
 
 // Memory optimization utilities
 export { ContextualMemory, VectorStoreMemory } from './memory/types.js';
+
+// State management with optimization
+export { FlowStateManager } from './state/FlowStateManager.js';
+
+// Routing and conditions system
+export {
+  FlowRouter,
+  ConditionType,
+  type BaseCondition,
+  type ValueCondition,
+  type ContainsCondition,
+  type RegexCondition,
+  type FunctionCondition,
+  type LogicalGroup,
+  type RouteCondition,
+  type Route,
+  type RouteEvaluationOptions,
+  type RouteEvaluationResult
+} from './routing/FlowRouter.js';
+
+// Event handling system
+export {
+  FlowEventBus,
+  EventPriority,
+  // Export FlowEvent as FlowSystemEvent to avoid name collision
+  type FlowEvent as FlowSystemEvent,
+  type FlowStateChangeEvent,
+  type FlowExecutionEvent,
+  type FlowMethodEvent,
+  type FlowRoutingEvent,
+  type AllFlowEvents,
+  type EventHandler,
+  type EventSubscriptionOptions
+} from './events/FlowEventBus.js';
+
+// Flow execution tracking
+export {
+  FlowExecutionTracker,
+  type FlowExecutionMetrics,
+  type MetricsSample,
+  type ExecutionTraceEntry,
+  type FlowTrackerOptions
+} from './execution/FlowExecutionTracker.js';
+
+// Flow scheduling system
+export {
+  FlowScheduler,
+  FlowExecutionStatus,
+  type FlowNode,
+  type FlowSchedulingOptions,
+  type FlowExecutionResult,
+  type FlowSchedulerEvent
+} from './scheduling/FlowScheduler.js';

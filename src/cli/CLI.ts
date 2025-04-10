@@ -43,12 +43,35 @@ export class CLI {
         
         // Crew commands
         const { RunCrewCommand } = await import('./commands/RunCrewCommand.js');
+        const { TrainCrewCommand } = await import('./commands/TrainCrewCommand.js');
+        const { TestCrewCommand } = await import('./commands/TestCrewCommand.js');
+        
+        // Task and memory commands
+        const { ReplayTaskCommand } = await import('./commands/ReplayTaskCommand.js');
+        const { LogTasksOutputsCommand } = await import('./commands/LogTasksOutputsCommand.js');
+        const { ResetMemoriesCommand } = await import('./commands/ResetMemoriesCommand.js');
+        
+        // Interactive commands
+        const { ChatCommand } = await import('./commands/ChatCommand.js');
         
         // Register commands with aliases for better UX
+        // Flow commands
         this.registerCommand(new CreateFlowCommand(), ['new-flow']);
         this.registerCommand(new PlotFlowCommand(), ['visualize-flow']);
         this.registerCommand(new RunFlowCommand(), ['execute-flow']);
+        
+        // Crew commands
         this.registerCommand(new RunCrewCommand(), ['execute-crew']);
+        this.registerCommand(new TrainCrewCommand(), ['train']);
+        this.registerCommand(new TestCrewCommand(), ['test', 'evaluate']);
+        
+        // Task and memory commands
+        this.registerCommand(new ReplayTaskCommand(), ['replay']);
+        this.registerCommand(new LogTasksOutputsCommand(), ['log-outputs']);
+        this.registerCommand(new ResetMemoriesCommand(), ['reset']);
+        
+        // Interactive commands
+        this.registerCommand(new ChatCommand(), []);
       } catch (error) {
         console.error('Error initializing commands:', error);
       }

@@ -3,3 +3,4 @@ export * from './ShortTermMemory.js';
 export * from './LongTermMemory.js';
 export * from './EntityMemory.js';
 export * from './ContextualMemory.js';
+export * from './UserMemory.js';

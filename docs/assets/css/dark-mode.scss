@@ -1,0 +1,148 @@
+---
+---
+
+// Dark mode styles
+@media (prefers-color-scheme: dark) {
+  .custom-dark-mode {
+    // Background and text colors
+    $body-background-color: #0d1117;
+    $body-text-color: #c9d1d9;
+    $link-color: #58a6ff;
+    $heading-color: #f0f6fc;
+    $nav-color: #c9d1d9;
+    $code-background-color: #161b22;
+    $code-text-color: #e6edf3;
+    
+    // Apply dark colors
+    background-color: $body-background-color;
+    color: $body-text-color;
+    
+    // Headings
+    h1, h2, h3, h4, h5, h6 {
+      color: $heading-color;
+    }
+    
+    // Links
+    a {
+      color: $link-color;
+      
+      &:hover {
+        color: lighten($link-color, 10%);
+      }
+    }
+    
+    // Navigation
+    .site-nav {
+      background-color: $body-background-color;
+      color: $nav-color;
+    }
+    
+    // Code blocks
+    pre.highlight, code {
+      background-color: $code-background-color;
+      color: $code-text-color;
+    }
+    
+    // Tables
+    table {
+      th {
+        background-color: #161b22;
+      }
+      
+      tr:nth-child(even) {
+        background-color: #161b22;
+      }
+      
+      tr:nth-child(odd) {
+        background-color: #0d1117;
+      }
+    }
+    
+    // Callouts
+    .callout {
+      background-color: #161b22;
+      border-color: #30363d;
+      
+      &.note {
+        border-left-color: #1f6feb;
+      }
+      
+      &.warning {
+        border-left-color: #f0883e;
+      }
+      
+      &.important {
+        border-left-color: #da3633;
+      }
+      
+      &.optimization {
+        border-left-color: #238636;
+      }
+    }
+    
+    // Search
+    .search-input {
+      background-color: #161b22;
+      color: #c9d1d9;
+    }
+    
+    // Sidebar
+    .site-sidebar {
+      background-color: #0d1117;
+      border-right-color: #30363d;
+    }
+    
+    // Buttons
+    .btn {
+      background-color: #21262d;
+      color: #c9d1d9;
+      border-color: #30363d;
+      
+      &:hover {
+        background-color: #30363d;
+      }
+    }
+  }
+}
+
+// Theme toggle button
+.theme-toggle-button {
+  background: transparent;
+  border: 1px solid #d1d5da;
+  border-radius: 5px;
+  padding: 5px 10px;
+  cursor: pointer;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  margin-left: auto;
+  
+  &:hover {
+    background-color: rgba(208, 215, 222, 0.1);
+  }
+  
+  svg {
+    margin-right: 5px;
+    width: 16px;
+    height: 16px;
+  }
+  
+  // Dark mode icon adjustments
+  .dark-mode & {
+    border-color: #484f58;
+    
+    &:hover {
+      background-color: rgba(110, 118, 129, 0.1);
+    }
+  }
+}
+
+// Custom dark mode-specific optimization callout
+.custom-dark-mode .callout.optimization {
+  background-color: rgba(35, 134, 54, 0.1);
+  border-left-color: #238636;
+  
+  .callout-title {
+    color: #7ce38b;
+  }
+}
