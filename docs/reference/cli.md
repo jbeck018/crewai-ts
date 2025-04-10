@@ -1,17 +1,20 @@
 ---
 layout: default
+title: CLI Documentation
+parent: API Reference
+nav_order: 2
 ---
 
 # CrewAI CLI Documentation for TypeScript
 
-The CrewAI TypeScript CLI provides a set of commands to interact with CrewAI-TS, allowing you to run, train, test crews, and manage memories efficiently.
+The CrewAI TypeScript CLI provides a set of commands to interact with CrewAI-TS, allowing you to create, run, analyze, and visualize AI workflows with memory-optimized execution.
 
 ## Installation
 
 To use the CrewAI TypeScript CLI, make sure you have CrewAI-TS installed:
 
 ```bash
-npm install crewai-ts
+bun add crewai-ts
 ```
 
 ## Basic Usage
@@ -19,8 +22,20 @@ npm install crewai-ts
 The basic structure of a CrewAI-TS CLI command is:
 
 ```bash
-npx crewai-ts [COMMAND] [OPTIONS] [ARGUMENTS]
+bun crewai-ts [COMMAND] [OPTIONS] [ARGUMENTS]
 ```
+
+Alternatively, you can use the CLI via npx or directly after installing globally:
+
+```bash
+# Using npx
+npx crewai-ts [COMMAND]
+
+# If installed globally
+crewai-ts [COMMAND]
+```
+
+However, for best memory performance, we recommend using Bun.
 
 ## Performance Optimizations
 
@@ -34,153 +49,221 @@ The TypeScript implementation of the CLI includes several memory and performance
 
 ## Available Commands
 
-### 1. Run Crew
+### 1. Create Flow
 
-Run a crew with optimized memory management and execution tracking.
-
-```bash
-npx crewai-ts run-crew [OPTIONS]
-```
-
-Optimizations:
-- Uses lazy loading for crew components
-- Implements memory-efficient task execution tracking
-- Optimizes token usage with predictive batching
-
-### 2. Train Crew
-
-Train the crew for a specified number of iterations with performance tracking.
+Creates a new Flow file structure with all the necessary components, including memory-optimized configurations.
 
 ```bash
-npx crewai-ts train-crew [OPTIONS]
+bun crewai-ts create-flow [FLOW_NAME] [OPTIONS]
 ```
 
-Options:
-- `-n, --iterations <number>`: Number of iterations to train the crew (default: 5)
-- `-f, --filename <path>`: Path to a custom file for training data
+**Options:**
+- `--path, -p <path>`: Directory to create the flow in (default: current directory)
+- `--memory, -m <memory-type>`: Memory implementation to use (default: 'efficient')
+- `--embedder, -e <embedder>`: Embedder configuration to use (default: 'float32')
 
-Optimizations:
-- Uses incremental performance tracking with minimal memory overhead
-- Implements specialized metric collection with optimized data structures
-- Employs memory-efficient agent training with proper garbage collection
+**Memory Optimizations:**
+- Uses templates with pre-configured memory optimization settings
+- Creates Flow files with Float32Array for embeddings by default
+- Includes configuration for tiered memory storage
+- Sets up proper token management in generated code
 
-### 3. Replay Task
+### 2. Run Flow
 
-Replay the crew execution from a specific task with optimized memory handling.
+Runs a Flow with memory-optimized execution settings.
 
 ```bash
-npx crewai-ts replay-task [OPTIONS]
+bun crewai-ts run-flow [FLOW_PATH] [OPTIONS]
 ```
 
-Options:
-- `-t, --task-id <id>`: Replay the crew from this task ID, including all subsequent tasks
+**Options:**
+- `--memory <value>`: Memory limit in MB for the execution (default: 512)
+- `--verbose, -v`: Enable verbose logging for debugging
+- `--metrics, -m`: Collect and display memory usage metrics
 
-Optimizations:
-- Implements memory-efficient task restoration
-- Uses optimized context handling to minimize memory usage
-- Employs lazy loading of dependent tasks
+**Memory Optimizations:**
+- Uses lazy loading for Flow components
+- Implements memory-efficient execution tracking
+- Enables Float32Array optimizations automatically
+- Pools similar embeddings to reduce redundancy
+- Implements stream processing for large outputs
 
-### 4. Log Tasks Outputs
+### 3. Plot Flow
 
-Retrieve your latest crew task outputs with memory-efficient loading.
+Generates a visual representation of a Flow with memory usage analysis.
 
 ```bash
-npx crewai-ts log-tasks-outputs
+bun crewai-ts plot-flow [FLOW_PATH] [OPTIONS]
 ```
 
-Optimizations:
-- Implements incremental loading of task outputs
-- Uses streaming output to handle large result sets
-- Employs compressed storage format for reduced memory footprint
+**Options:**
+- `--output, -o <path>`: Path to save the visualization (default: './flow-diagram.html')
+- `--analyze, -a`: Include memory usage analysis in the visualization
 
-### 5. Reset Memories
+**Memory Optimizations:**
+- Uses incremental processing for large Flow structures
+- Implements efficient rendering algorithms
+- Highlights memory hotspots in the visualization
+
+### 4. Create Agent
+
+Creates a new Agent with memory-optimized settings.
+
+```bash
+bun crewai-ts create-agent [AGENT_NAME] [OPTIONS]
+```
+
+**Options:**
+- `--model, -m <model-name>`: LLM model to use (default: 'gpt-4o-mini')
+- `--memory-type <type>`: Memory type to use (default: 'tiered')
+- `--tools, -t <tools>`: Comma-separated list of tools to include
+
+**Memory Optimizations:**
+- Creates agents with optimized context window management
+- Sets up lazy-loaded tool initialization
+- Configures caching for repeated agent operations
+
+### 5. List Commands
+
+Lists all available commands with their memory optimization settings.
+
+```bash
+bun crewai-ts help
+```
+
+## Advanced Memory Optimization Options
+
+CrewAI TypeScript CLI includes several advanced memory optimization flags that can be used with any command:
+
+### Global Memory Flags
+
+```bash
+bun crewai-ts [command] --memory-options=<json-string>
+```
+
+The `--memory-options` flag accepts a JSON string with the following configurations:
+
+```json
+{
+  "useFloat32Array": true,         // Use Float32Array for 50% memory reduction
+  "enableCompression": true,       // Enable vector compression
+  "sharedMemory": true,            // Use shared memory pool
+  "gcInterval": 5000,              // Garbage collection interval in ms
+  "progressiveCleanup": true,      // Enable progressive memory cleanup
+  "maxMemoryUsageMB": 512          // Maximum memory usage in MB
+}
+```
+
+### Examples of Memory-Optimized Commands
+
+```bash
+# Run a flow with optimized memory settings
+bun crewai-ts run-flow ./flows/research-flow.ts --memory-options='{"useFloat32Array":true,"enableCompression":true}'
+
+# Create a memory-efficient agent
+bun crewai-ts create-agent ResearchAgent --memory-type=tiered --memory-options='{"sharedMemory":true}'
+
+# Plot flow with memory analysis
+bun crewai-ts plot-flow ./flows/complex-flow.ts --analyze --memory-options='{"maxMemoryUsageMB":256}'
+```
+
+## Monitoring Memory Usage
+
+The CLI includes built-in memory monitoring capabilities:
+
+```bash
+bun crewai-ts monitor-memory [COMMAND] [ARGS...]
+```
+
+This wrapper command will execute any other CrewAI command while tracking memory usage and reporting statistics at the end of execution.
+
+
+
+
+
+## Additional Memory Management Commands
+
+### Reset Memories
 
 Reset various types of memory storages with optimized management.
 
 ```bash
-npx crewai-ts reset-memories [OPTIONS]
+bun crewai-ts reset-memories [OPTIONS]
 ```
 
-Options:
-- `-l, --long`: Reset LONG TERM memory
-- `-s, --short`: Reset SHORT TERM memory
-- `-e, --entities`: Reset ENTITIES memory
-- `-k, --kickoff-outputs`: Reset LATEST KICKOFF TASK OUTPUTS
-- `-a, --all`: Reset ALL memories
+**Options:**
+- `--long, -l`: Reset long-term memory storage
+- `--short, -s`: Reset short-term memory cache
+- `--embeddings, -e`: Reset embedding vectors storage
+- `--all, -a`: Reset all memory systems
 
-Optimizations:
-- Implements targeted memory clearing to minimize system impact
-- Uses efficient file system operations for storage cleanup
-- Employs proper reference management for garbage collection
+**Memory Optimizations:**
+- Uses targeted memory clearing to minimize system impact
+- Implements incremental deletion for large vector stores
+- Properly handles reference management for garbage collection
 
-### 6. Test Crew
+### Interactive Agent Chat
 
-Test the crew and evaluate performance with detailed metrics collection.
+Start an interactive conversation with an agent or crew, with memory-efficient streaming responses.
 
 ```bash
-npx crewai-ts test-crew [OPTIONS]
+bun crewai-ts chat [OPTIONS]
 ```
 
-Options:
-- `-n, --iterations <number>`: Number of iterations to test the crew (default: 3)
-- `-m, --model <model>`: LLM Model to run the tests on the Crew
+**Options:**
+- `--agent <name>`: Specify agent configuration file to chat with
+- `--memory <type>`: Memory type to use (default: 'efficient')
+- `--model <name>`: LLM model to use (default: 'gpt-4o-mini')
 
-Optimizations:
-- Uses specialized metrics collection with minimal memory overhead
-- Implements efficient test case execution with proper resource cleanup
-- Employs optimized reporting with memory-efficient data structures
+**Memory Optimizations:**
+- Uses streaming response processing to minimize memory usage
+- Implements efficient chat history management with LRU caching
+- Employs incremental token handling for lengthy conversations
 
-### 7. Chat
+## Performance Monitoring Commands
 
-Start an interactive conversation with the crew, optimized for memory efficiency and streaming responses.
+### Memory Usage Analysis
+
+Analyze memory usage patterns in flows and agents to identify optimization opportunities.
 
 ```bash
-npx crewai-ts chat
+bun crewai-ts analyze-memory [FLOW_PATH] [OPTIONS]
 ```
 
-Optimizations:
-- Uses streaming response handling to minimize memory usage
-- Implements efficient context management with LRU caching
-- Employs optimized token handling for reduced memory footprint
-- Utilizes incremental history management to handle long conversations
+**Options:**
+- `--detailed, -d`: Show detailed breakdown of memory usage by component
+- `--format <type>`: Output format (options: 'table', 'json', 'chart')
+- `--threshold <MB>`: Only show components using more than this threshold
 
-### 8. Create Flow
+**Features:**
+- Creates visual memory usage heat maps for flows
+- Identifies memory-intensive operations
+- Recommends specific optimization techniques
 
-Create a new flow with memory-efficient template handling.
 
-```bash
-npx crewai-ts create-flow [NAME]
-```
+## Memory System Implementation Details
 
-Optimizations:
-- Uses efficient template generation with minimal memory allocation
-- Implements optimized file system operations for flow creation
+The CLI commands leverage the comprehensive memory system implementations that include:
 
-### 9. Plot Flow
+### Float32Array Optimizations
 
-Visualize a flow with memory-efficient rendering and HTML template handling.
+All embeddings operations use `Float32Array` rather than standard JavaScript arrays, reducing memory footprint by approximately 50%. This is particularly important for operations involving large knowledge bases and embedding vectors.
 
-```bash
-npx crewai-ts plot-flow
-```
+### LRU Caching
 
-Optimizations:
-- Uses optimized DOM processing for visualization generation
-- Implements efficient CSS variable handling for reduced memory footprint
-- Employs lazy loading of visualization components
+The CLI implements LRU (Least Recently Used) caching throughout all memory operations to minimize redundant calculations and API calls, significantly reducing both memory usage and execution time.
 
-### 10. Run Flow
+### Memory-Efficient Embedders
 
-Run a flow with optimized state management and memory efficiency.
+The CLI integrates with various embedders with memory-optimized implementations:
 
-```bash
-npx crewai-ts run-flow
-```
+- **OpenAI Embedder**: Efficiently batches requests and manages token limits
+- **Cohere Embedder**: Implements retry logic with exponential backoff
+- **HuggingFace Embedder**: Supports both API and local optimization options
+- **FastEmbed**: Provides extremely memory-efficient local embeddings
+- **Custom Embedder Wrapper**: Allows for specialized memory optimizations
 
-Optimizations:
-- Uses incremental state updates to minimize memory usage
-- Implements efficient event handling with proper resource management
-- Employs optimized execution tracking with minimal overhead
+These implementations ensure the CrewAI TypeScript CLI delivers the best possible performance while maintaining minimal memory footprint.
 
 ## Implementation Notes
 

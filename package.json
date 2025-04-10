@@ -32,12 +32,22 @@
   ],
   "scripts": {
     "build": "tsc",
+    "build:analyze": "tsc && npx bundlesize",
+    "build:production": "tsc --project tsconfig.production.json",
     "dev": "tsc --watch",
     "test": "bun test",
+    "test:ci": "NODE_OPTIONS='--max-old-space-size=4096' bun test --coverage",
     "test:vitest": "vitest run",
     "test:vitest:watch": "vitest",
+    "test:memory": "bun test ./src/memory/*.test.ts",
+    "test:knowledge": "bun test ./src/knowledge/*.test.ts",
     "lint": "eslint --ext .ts src",
+    "lint:fix": "eslint --ext .ts src --fix",
     "format": "prettier --write 'src/**/*.ts'",
+    "type-check": "tsc --noEmit",
+    "prepare": "husky install",
+    "pre-commit": "lint-staged",
+    "pre-push": "npm run type-check && npm run test",
     "cli": "node bin/crewai.js",
     "create-flow": "node bin/crewai.js create-flow",
     "run-flow": "node bin/crewai.js run-flow",
@@ -62,9 +72,12 @@
     "@types/uuid": "^10.0.0",
     "@typescript-eslint/eslint-plugin": "^6.0.0",
     "@typescript-eslint/parser": "^6.0.0",
+    "bundlesize": "^0.18.1",
     "bun-types": "^1.2.8",
     "eslint": "^8.0.0",
     "expect": "^29.7.0",
+    "husky": "^8.0.3",
+    "lint-staged": "^15.2.0",
     "prettier": "^3.0.0",
     "typescript": "^5.0.0",
     "vis-network": "^9.1.9",
@@ -80,5 +93,17 @@
     "pg": "^8.14.1",
     "uuid": "^11.1.0",
     "zod": "^3.22.0"
-  }
+  },
+  "lint-staged": {
+    "*.{ts,tsx}": [
+      "eslint --fix",
+      "prettier --write"
+    ]
+  },
+  "bundlesize": [
+    {
+      "path": "./dist/**/*.js",
+      "maxSize": "500 kB"
+    }
+  ]
 }

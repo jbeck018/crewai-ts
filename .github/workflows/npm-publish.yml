@@ -1,0 +1,176 @@
+name: Publish to NPM
+
+on:
+  push:
+    branches: [ main ]
+    # Only trigger on version changes to avoid unnecessary deployments
+    paths:
+      - 'package.json'
+  workflow_dispatch: # Allow manual triggering
+
+jobs:
+  # First check if version is new before proceeding
+  check-version:
+    name: Check Version Change
+    runs-on: ubuntu-latest
+    outputs:
+      should_publish: ${{ steps.check.outputs.should_publish }}
+      version: ${{ steps.check.outputs.version }}
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 2 # Need minimal history to compare changes
+      
+      - name: Check if package.json version changed
+        id: check
+        # Use efficient grep and awk for version comparison instead of heavy parsing
+        run: |
+          CURRENT_VERSION=$(grep '"version":' package.json | awk -F\" '{print $4}')
+          echo "Current version: $CURRENT_VERSION"
+          
+          git checkout HEAD~1 package.json
+          PREVIOUS_VERSION=$(grep '"version":' package.json | awk -F\" '{print $4}')
+          echo "Previous version: $PREVIOUS_VERSION"
+          
+          git checkout HEAD package.json
+          
+          if [ "$CURRENT_VERSION" != "$PREVIOUS_VERSION" ]; then
+            echo "Version changed from $PREVIOUS_VERSION to $CURRENT_VERSION"
+            echo "should_publish=true" >> "$GITHUB_OUTPUT"
+            echo "version=$CURRENT_VERSION" >> "$GITHUB_OUTPUT"
+          else
+            echo "Version unchanged, skipping publish"
+            echo "should_publish=false" >> "$GITHUB_OUTPUT"
+            echo "version=$CURRENT_VERSION" >> "$GITHUB_OUTPUT"
+          fi
+
+  # Memory-optimized validation before publishing
+  validate-and-test:
+    name: Validate and Test
+    needs: check-version
+    if: ${{ needs.check-version.outputs.should_publish == 'true' }}
+    runs-on: ubuntu-latest
+    container:
+      image: node:18
+      options: --memory=4g --cpus=2 # Memory-efficient container settings
+    
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 1
+      
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: latest
+          cache: true
+      
+      - name: Install dependencies
+        # Optimize installation with Bun
+        run: bun install --frozen-lockfile
+      
+      - name: Lint code
+        run: bun run lint
+      
+      - name: Type check
+        # Run memory-optimized type checking
+        run: bun run type-check
+      
+      - name: Build project
+        # Use optimized build process
+        run: bun run build
+      
+      - name: Run tests
+        # Run optimized Bun tests
+        run: bun test --coverage
+        env:
+          # Use memory-efficient testing configuration for embeddings
+          TEST_USE_MOCK_EMBEDDINGS: true
+          TEST_SKIP_EXTERNAL_API: true
+      
+      - name: Check bundle size
+        # Ensure package size remains optimized
+        run: bunx bundlesize
+
+  # Optimized publishing process
+  publish-package:
+    name: Publish Package
+    needs: [check-version, validate-and-test]
+    if: ${{ needs.check-version.outputs.should_publish == 'true' }}
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: latest
+          registry-url: 'https://registry.npmjs.org'
+          # Optimize with token authentication
+          always-auth: true
+      
+      - name: Install dependencies
+        # Install dependencies with Bun
+        run: bun install --frozen-lockfile
+      
+      - name: Build package
+        # Optimize TypeScript compilation for production
+        run: bun run build:production
+      
+      - name: Prepare package for publishing
+        # Create a clean package with optimized contents
+        run: |
+          # Remove unnecessary files to optimize package size
+          echo "Preparing optimized package for npm..."
+          # Copy only essential files
+          cp LICENSE README.md package.json ./dist/
+      
+      - name: Publish to NPM
+        # Use memory-efficient publish process
+        run: |
+          cd dist
+          bun publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{secrets.NPM_TOKEN}}
+      
+      - name: Create GitHub Release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: v${{ needs.check-version.outputs.version }}
+          release_name: Release v${{ needs.check-version.outputs.version }}
+          draft: false
+          prerelease: false
+
+  # Deploy documentation after successful publish
+  deploy-docs:
+    name: Deploy Documentation
+    needs: [publish-npm]
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: 3.0
+          bundler-cache: true
+      
+      - name: Build documentation
+        # Resource-efficient Jekyll build
+        run: |
+          cd docs
+          bundle install
+          bundle exec jekyll build --baseurl "/${{ github.event.repository.name }}"
+      
+      - name: Deploy documentation to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./docs/_site
+          # Memory-efficient publishing with incremental updates
+          force_orphan: false
+          enable_jekyll: false

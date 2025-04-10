@@ -14,19 +14,23 @@ This project is not owned by CrewAI, but is a community-driven TypeScript implem
 
 ## Installation
 
-CrewAI TypeScript can be installed via npm or yarn:
+CrewAI TypeScript is optimized for Bun and can be installed with:
 
 ```bash
-# Using npm
-npm install crewai-ts
+# Using bun (recommended for best performance)
+bun add crewai-ts
 
-# Using yarn
+# You can also use npm or yarn if needed
+npm install crewai-ts
 yarn add crewai-ts
 ```
 
+We recommend using Bun for optimal memory performance and faster execution times.
+
 ## Prerequisites
 
-- Node.js v18.0.0 or higher
+- Bun v1.0.0 or higher (recommended)
+- Node.js v18.0.0 or higher (if not using Bun)
 - TypeScript v4.5.0 or higher
 
 ## Basic Configuration
