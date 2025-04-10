@@ -8,6 +8,10 @@ nav_order: 1
 
 Welcome to the TypeScript implementation of CrewAI! This guide will help you get started with installing and configuring CrewAI-TS for your AI agent projects.
 
+## NOTE!
+
+This project is not owned by CrewAI, but is a community-driven TypeScript implementation of CrewAI. If you want to help us improve the project, please consider contributing.
+
 ## Installation
 
 CrewAI TypeScript can be installed via npm or yarn:
