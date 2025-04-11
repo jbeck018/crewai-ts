@@ -83,7 +83,7 @@ jobs:
           TEST_SKIP_EXTERNAL_API: true
       
       - name: Upload test coverage
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: coverage
           path: coverage/
@@ -121,7 +121,7 @@ jobs:
           bunx bundlesize
       
       - name: Upload build artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: dist
           path: dist/
