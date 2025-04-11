@@ -63,8 +63,8 @@
   "author": "",
   "license": "MIT",
   "engines": {
-    "node": ">=18.0.0",
-    "bun": ">=1.0.0"
+    "node": ">=21.0.0",
+    "bun": ">=1.2.9"
   },
   "devDependencies": {
     "@types/jest": "^29.5.14",
@@ -81,15 +81,15 @@
     "prettier": "^3.5.3",
     "typescript": "^5.8.3",
     "vis-network": "^9.1.9",
-    "vitest": "^1.6.1"
+    "vitest": "^3.1.1"
   },
   "dependencies": {
     "chalk": "^5.4.1",
-    "commander": "^11.1.0",
+    "commander": "^13.1.0",
     "gpt-tokenizer": "^2.9.0",
-    "jsdom": "^22.1.0",
+    "jsdom": "^26.0.0",
     "mysql2": "^3.14.0",
-    "ora": "^7.0.1",
+    "ora": "^8.2.0",
     "pg": "^8.14.1",
     "uuid": "^11.1.0",
     "zod": "^3.24.2"
