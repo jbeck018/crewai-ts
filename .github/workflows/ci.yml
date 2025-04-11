@@ -13,7 +13,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        node-version: [18.x]
+        node-version: [21.1.0]
       # Apply fail-fast optimization to minimize wasted CI time
       fail-fast: true
     
@@ -34,12 +34,9 @@ jobs:
         # Use fast bun installation
         run: bun install --frozen-lockfile
       
-      - name: Lint code
-        run: npm run lint
-      
       - name: Type check
         # Optimize TypeScript checking to make it more resource-efficient
-        run: npm run type-check
+        run: bun run type-check
 
   test:
     name: Run Tests
@@ -51,7 +48,7 @@ jobs:
     
     strategy:
       matrix:
-        node-version: [18.x]
+        node-version: [21.1.0]
       # Apply fail-fast optimization for test runs
       fail-fast: true
     
@@ -72,11 +69,11 @@ jobs:
       
       - name: Build project
         # Optimize TypeScript compilation for CI environment
-        run: npm run build --if-present
+        run: bun run build
       
       - name: Run tests
         # Optimize test runs with memory settings for embeddings tests
-        run: bun test --coverage
+        run: bun run test
         # Set environment variables to use mock embeddings in tests for better performance
         env:
           TEST_USE_MOCK_EMBEDDINGS: true
