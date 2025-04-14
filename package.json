@@ -1,34 +1,34 @@
 {
   "name": "crewai-ts",
-  "version": "0.1.91",
+  "version": "0.1.92",
   "description": "TypeScript port of crewAI for agent-based workflows",
   "type": "module",
   "exports": {
     ".": {
-      "import": "./dist/index.js",
-      "types": "./dist/index.d.ts"
+      "import": "./index.js",
+      "types": "./index.d.ts"
     },
     "./flow": {
-      "import": "./dist/flow/index.js",
-      "types": "./dist/flow/index.d.ts"
+      "import": "./flow/index.js",
+      "types": "./flow/index.d.ts"
     },
     "./flow/decorators": {
-      "import": "./dist/flow/decorators.js",
-      "types": "./dist/flow/decorators.d.ts"
+      "import": "./flow/decorators.js",
+      "types": "./flow/decorators.d.ts"
     },
     "./cli": {
-      "import": "./dist/cli/index.js",
-      "types": "./dist/cli/index.d.ts"
+      "import": "./cli/index.js",
+      "types": "./cli/index.d.ts"
     }
   },
-  "main": "./dist/index.js",
-  "types": "./dist/index.d.ts",
+  "main": "./index.js",
+  "types": "./index.d.ts",
   "typesVersions": {
     "*": {
-      "*": ["./dist/*"],
-      "flow": ["./dist/flow/index.d.ts"],
-      "flow/decorators": ["./dist/flow/decorators.d.ts"],
-      "cli": ["./dist/cli/index.d.ts"]
+      "*": ["./"],
+      "flow": ["./flow/index.d.ts"],
+      "flow/decorators": ["./flow/decorators.d.ts"],
+      "cli": ["./cli/index.d.ts"]
     }
   },
   "bin": {
