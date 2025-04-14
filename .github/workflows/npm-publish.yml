@@ -146,14 +146,14 @@ jobs:
         env:
           NODE_AUTH_TOKEN: ${{secrets.NPM_TOKEN}}
       
-      - name: Create GitHub Release
-        uses: softprops/action-gh-release@v1
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          tag_name: v${{ needs.check-version.outputs.version }}
-          name: Release v${{ needs.check-version.outputs.version }}
-          draft: false
-          prerelease: false
+      # - name: Create GitHub Release
+      #   uses: softprops/action-gh-release@v1
+      #   with:
+      #     token: ${{ secrets.GITHUB_TOKEN }}
+      #     tag_name: v${{ needs.check-version.outputs.version }}
+      #     name: Release v${{ needs.check-version.outputs.version }}
+      #     draft: false
+      #     prerelease: false
 
   # Deploy documentation after successful publish
   deploy-docs:
