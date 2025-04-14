@@ -115,8 +115,13 @@ jobs:
       - name: Build package
         # Optimize TypeScript compilation for production with explicit type declarations
         run: |
+          echo "Building TypeScript project..."
           # Use TypeScript directly to ensure proper declaration file generation
           npx tsc --project tsconfig.production.json --declaration --declarationMap
+          
+          # List the compiled files to verify output
+          echo "Compiled files in dist directory:"
+          find ./dist -type f | sort
       
       - name: Copy package files
         run: |
@@ -124,8 +129,15 @@ jobs:
           # Create a temp directory for the package
           mkdir -p ./npm-package
           
-          # Copy the compiled files to the package directory
-          cp -r ./dist/* ./npm-package/
+          # First ensure the dist directory exists and has content
+          if [ ! -d "./dist" ] || [ -z "$(ls -A ./dist)" ]; then
+            echo "Error: dist directory is empty or doesn't exist!"
+            exit 1
+          fi
+          
+          # Copy the compiled files to the package directory - use verbose to debug
+          echo "Copying compiled files to package directory..."
+          cp -rv ./dist/* ./npm-package/
           
           # Copy package.json and README to the package directory
           cp README.md package.json ./npm-package/
@@ -155,9 +167,16 @@ jobs:
             fi
           done
           
+          # Count files by type to ensure we have all necessary files
+          echo "File counts by extension:"
+          find ./npm-package -type f | grep -v 'node_modules' | sed 's/.*\.//' | sort | uniq -c
+          
           # List the contents of the package for verification
-          echo "Package contents:"
-          find ./npm-package -type f | sort
+          echo "Package contents (top-level):"
+          ls -la ./npm-package
+          
+          echo "Total files in package:"
+          find ./npm-package -type f | wc -l
           
       - name: Create bin directory
         run: mkdir -p ./npm-package/bin
@@ -177,6 +196,29 @@ jobs:
         env:
           NODE_AUTH_TOKEN: ${{secrets.NPM_TOKEN}}
           
+      - name: Prepare package for publishing
+        run: |
+          # Create a tarball of the package to inspect before publishing
+          cd npm-package
+          npm pack
+          
+          # Extract the tarball to verify its contents
+          mkdir -p ../package-check
+          tar -xzf *.tgz -C ../package-check
+          
+          echo "Contents of the final package tarball:"
+          find ../package-check -type f | sort
+          
+          echo "Total files in tarball:"
+          find ../package-check -type f | wc -l
+          
+          # If there are fewer than 10 files in the tarball, something is wrong
+          FILE_COUNT=$(find ../package-check -type f | wc -l)
+          if [ $FILE_COUNT -lt 10 ]; then
+            echo "ERROR: Package tarball contains too few files ($FILE_COUNT). Expected at least 10 files."
+            exit 1
+          fi
+      
       - name: Publish to NPM
         run: |
           cd npm-package
