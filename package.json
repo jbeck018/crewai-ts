@@ -1,6 +1,6 @@
 {
   "name": "crewai-ts",
-  "version": "0.1.991",
+  "version": "0.1.992",
   "description": "TypeScript port of crewAI for agent-based workflows",
   "type": "module",
   "exports": {
@@ -184,6 +184,7 @@
     "gpt-tokenizer": "^2.9.0",
     "jsdom": "^26.1.0",
     "mysql2": "^3.14.0",
+    "nanoid": "^5.0.6",
     "openai": "^4.93.0",
     "ora": "^8.2.0",
     "pg": "^8.14.1",
