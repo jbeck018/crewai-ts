@@ -110,7 +110,7 @@ jobs:
       
       - name: Build package
         # Optimize TypeScript compilation for production
-        run: bun run build:production
+        run: bun run build
       
       - name: Prepare package for publishing
         # Create a clean package with optimized contents
@@ -124,7 +124,7 @@ jobs:
         # Use memory-efficient publish process
         run: |
           cd dist
-          bun publish --access public
+          npm publish --access public
         env:
           NODE_AUTH_TOKEN: ${{secrets.NPM_TOKEN}}
       

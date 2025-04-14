@@ -1,6 +1,6 @@
 {
   "name": "crewai-ts",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "description": "TypeScript port of crewAI for agent-based workflows",
   "type": "module",
   "exports": {
@@ -60,7 +60,7 @@
     "llm",
     "ai"
   ],
-  "author": "",
+  "author": "Jacob Beck",
   "license": "MIT",
   "engines": {
     "node": ">=21.0.0",
