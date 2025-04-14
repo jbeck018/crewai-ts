@@ -25,6 +25,6 @@ export * from './embedder/index.js';
 export { EmbedderFactory } from './embedder/EmbedderFactory.js';
 export type { EmbedderFactoryOptions } from './embedder/EmbedderFactory.js';
 
-// TODO: Implement Knowledge class
-// export { Knowledge } from './Knowledge.js';
-// export default Knowledge;
+// Export the Knowledge class
+export { Knowledge } from './Knowledge.js';
+export * from './storage/index.js';

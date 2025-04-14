@@ -1,6 +1,6 @@
 {
   "name": "crewai-ts",
-  "version": "0.1.99",
+  "version": "0.1.100",
   "description": "TypeScript port of crewAI for agent-based workflows",
   "type": "module",
   "exports": {
@@ -27,6 +27,10 @@
     "./memory": {
       "import": "./memory/index.js",
       "types": "./memory/index.d.ts"
+    },
+    "./knowledge": {
+      "import": "./knowledge/index.js",
+      "types": "./knowledge/index.d.ts"
     },
     "./llm": {
       "import": "./llm/index.js",
@@ -70,6 +74,9 @@
       ],
       "memory": [
         "./memory/index.d.ts"
+      ],
+      "knowledge": [
+        "./knowledge/index.d.ts"
       ],
       "llm": [
         "./llm/index.d.ts"
