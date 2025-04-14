@@ -1,6 +1,6 @@
 {
   "name": "crewai-ts",
-  "version": "0.1.94",
+  "version": "0.1.95",
   "description": "TypeScript port of crewAI for agent-based workflows",
   "type": "module",
   "exports": {
@@ -43,9 +43,31 @@
     "crewai": "bin/crewai.js"
   },
   "files": [
-    "dist",
+    "*.js",
+    "*.d.ts",
+    "*.d.ts.map",
+    "agent/**/*.js",
+    "agent/**/*.d.ts",
+    "crew/**/*.js",
+    "crew/**/*.d.ts",
+    "task/**/*.js",
+    "task/**/*.d.ts",
+    "tools/**/*.js",
+    "tools/**/*.d.ts",
+    "memory/**/*.js",
+    "memory/**/*.d.ts",
+    "llm/**/*.js",
+    "llm/**/*.d.ts",
+    "flow/**/*.js",
+    "flow/**/*.d.ts",
+    "cli/**/*.js",
+    "cli/**/*.d.ts",
+    "utils/**/*.js",
+    "utils/**/*.d.ts",
+    "types/**/*.js",
+    "types/**/*.d.ts",
     "bin",
-    "src"
+    "README.md"
   ],
   "scripts": {
     "build": "tsc --declaration --declarationMap",
