@@ -1,389 +1,318 @@
 <?xml version="1.0" encoding="UTF-8" ?>
-<testsuites name="vitest tests" tests="35" failures="20" errors="0" time="1.832">
-    <testsuite name="tests/tools/ai/DallETool.test.ts" timestamp="2025-04-09T23:58:13.296Z" hostname="Jacobs-MacBook-Pro.local" tests="12" failures="6" errors="0" skipped="0" time="0.17">
-        <testcase classname="tests/tools/ai/DallETool.test.ts" name="DallETool &gt; Tool Creation &gt; should create a tool with default options" time="0.001">
+<testsuites name="vitest tests" tests="101" failures="1" errors="0" time="0.3082313329">
+    <testsuite name="tests/agent/Agent.test.ts" timestamp="2025-04-14T01:00:06.336Z" hostname="ip-192-168-0-220.ec2.internal" tests="0" failures="0" errors="0" skipped="0" time="0">
+    </testsuite>
+    <testsuite name="tests/agent/LiteAgent.test.ts" timestamp="2025-04-14T01:00:06.338Z" hostname="ip-192-168-0-220.ec2.internal" tests="0" failures="0" errors="0" skipped="0" time="0">
+    </testsuite>
+    <testsuite name="tests/crew/Crew.test.ts" timestamp="2025-04-14T01:00:06.339Z" hostname="ip-192-168-0-220.ec2.internal" tests="0" failures="0" errors="0" skipped="0" time="0">
+    </testsuite>
+    <testsuite name="tests/crew/CrewMemory.test.ts" timestamp="2025-04-14T01:00:06.347Z" hostname="ip-192-168-0-220.ec2.internal" tests="0" failures="0" errors="0" skipped="0" time="0">
+    </testsuite>
+    <testsuite name="tests/flow/Flow.test.ts" timestamp="2025-04-14T01:00:06.350Z" hostname="ip-192-168-0-220.ec2.internal" tests="8" failures="0" errors="0" skipped="0" time="0">
+        <testcase classname="tests/flow/Flow.test.ts" name="Flow &gt; Basic Flow Execution &gt; executes methods in order" time="0">
         </testcase>
-        <testcase classname="tests/tools/ai/DallETool.test.ts" name="DallETool &gt; Tool Creation &gt; should create a tool with custom API key" time="0">
+        <testcase classname="tests/flow/Flow.test.ts" name="Flow &gt; Basic Flow Execution &gt; passes results between methods" time="0">
         </testcase>
-        <testcase classname="tests/tools/ai/DallETool.test.ts" name="DallETool &gt; Tool Creation &gt; should create a tool with custom base URL" time="0">
+        <testcase classname="tests/flow/Flow.test.ts" name="Flow &gt; Conditional Flow Execution &gt; routes to path A when condition matches" time="0">
         </testcase>
-        <testcase classname="tests/tools/ai/DallETool.test.ts" name="DallETool &gt; Tool Creation &gt; should create a tool with custom organization" time="0.001">
+        <testcase classname="tests/flow/Flow.test.ts" name="Flow &gt; Conditional Flow Execution &gt; routes to path B when condition matches" time="0">
         </testcase>
-        <testcase classname="tests/tools/ai/DallETool.test.ts" name="DallETool &gt; Tool Creation &gt; should create a tool with caching disabled" time="0">
+        <testcase classname="tests/flow/Flow.test.ts" name="Flow &gt; Complex Conditions &gt; AND condition executes method only when all dependencies are met" time="0">
         </testcase>
-        <testcase classname="tests/tools/ai/DallETool.test.ts" name="DallETool &gt; Tool Execution &gt; should generate images successfully" time="0.051">
-            <failure message="expected &quot;spy&quot; to be called with arguments: [ StringContaining{…}, …(1) ]
-
-Received: 
-
-  1st spy call:
-
-  Array [
--   StringContaining &quot;/images/generations&quot;,
--   ObjectContaining {
--     &quot;body&quot;: Any&lt;String&gt;,
--     &quot;headers&quot;: ObjectContaining {
--       &quot;Authorization&quot;: &quot;Bearer test-api-key&quot;,
-+   &quot;https://api.openai.com/v1/images/generations&quot;,
-+   Object {
-+     &quot;body&quot;: &quot;{\&quot;prompt\&quot;:\&quot;test\&quot;}&quot;,
-+     &quot;headers&quot;: Object {
-        &quot;Content-Type&quot;: &quot;application/json&quot;,
-      },
-      &quot;method&quot;: &quot;POST&quot;,
-    },
-  ]
-
-
-Number of calls: 1
-" type="AssertionError">
-AssertionError: expected &quot;spy&quot; to be called with arguments: [ StringContaining{…}, …(1) ]
-
-Received: 
-
-  1st spy call:
-
-  Array [
--   StringContaining &quot;/images/generations&quot;,
--   ObjectContaining {
--     &quot;body&quot;: Any&lt;String&gt;,
--     &quot;headers&quot;: ObjectContaining {
--       &quot;Authorization&quot;: &quot;Bearer test-api-key&quot;,
-+   &quot;https://api.openai.com/v1/images/generations&quot;,
-+   Object {
-+     &quot;body&quot;: &quot;{\&quot;prompt\&quot;:\&quot;test\&quot;}&quot;,
-+     &quot;headers&quot;: Object {
-        &quot;Content-Type&quot;: &quot;application/json&quot;,
-      },
-      &quot;method&quot;: &quot;POST&quot;,
-    },
-  ]
-
-
-Number of calls: 1
-
- ❯ tests/tools/ai/DallETool.test.ts:252:28
-            </failure>
+        <testcase classname="tests/flow/Flow.test.ts" name="Flow &gt; Error Handling &gt; catches errors and triggers error handler" time="0">
         </testcase>
-        <testcase classname="tests/tools/ai/DallETool.test.ts" name="DallETool &gt; Tool Execution &gt; should handle API errors gracefully" time="0.011">
-            <failure message="expected [ { …(2) } ] to deeply equal []" type="AssertionError">
-AssertionError: expected [ { …(2) } ] to deeply equal []
-
-- Expected
-+ Received
-
-- Array []
-+ Array [
-+   Object {
-+     &quot;revisedPrompt&quot;: &quot;Generate a sunset over mountains&quot;,
-+     &quot;url&quot;: &quot;https://example.com/generated-image.png&quot;,
-+   },
-+ ]
-
- ❯ tests/tools/ai/DallETool.test.ts:291:29
-            </failure>
+        <testcase classname="tests/flow/Flow.test.ts" name="Flow &gt; Flow Events &gt; emits events during execution" time="0">
         </testcase>
-        <testcase classname="tests/tools/ai/DallETool.test.ts" name="DallETool &gt; Tool Execution &gt; should save images locally when requested" time="0.001">
-            <failure message="expected &quot;spy&quot; to be called with arguments: [ Array(2) ]
-
-Received: 
-
-  1st spy call:
-
-  Array [
--   &quot;./test-images&quot;,
-+   &quot;dalle-images&quot;,
-    Object {
-      &quot;recursive&quot;: true,
-    },
-  ]
-
-
-Number of calls: 1
-" type="AssertionError">
-AssertionError: expected &quot;spy&quot; to be called with arguments: [ Array(2) ]
-
-Received: 
-
-  1st spy call:
-
-  Array [
--   &quot;./test-images&quot;,
-+   &quot;dalle-images&quot;,
-    Object {
-      &quot;recursive&quot;: true,
-    },
-  ]
-
-
-Number of calls: 1
-
- ❯ tests/tools/ai/DallETool.test.ts:341:24
-            </failure>
-        </testcase>
-        <testcase classname="tests/tools/ai/DallETool.test.ts" name="DallETool &gt; Tool Execution &gt; should use cache for repeated requests" time="0.001">
-            <failure message="expected &quot;spy&quot; to not be called at all, but actually been called 1 times
-
-Received: 
-
-  1st spy call:
-
-    Array [
-      &quot;https://api.openai.com/v1/images/generations&quot;,
-      Object {
-        &quot;body&quot;: &quot;{&quot;prompt&quot;:&quot;test&quot;}&quot;,
-        &quot;headers&quot;: Object {
-          &quot;Content-Type&quot;: &quot;application/json&quot;,
-        },
-        &quot;method&quot;: &quot;POST&quot;,
-      },
-    ]
-
-
-Number of calls: 1
-" type="AssertionError">
-AssertionError: expected &quot;spy&quot; to not be called at all, but actually been called 1 times
-
-Received: 
-
-  1st spy call:
-
-    Array [
-      &quot;https://api.openai.com/v1/images/generations&quot;,
-      Object {
-        &quot;body&quot;: &quot;{&quot;prompt&quot;:&quot;test&quot;}&quot;,
-        &quot;headers&quot;: Object {
-          &quot;Content-Type&quot;: &quot;application/json&quot;,
-        },
-        &quot;method&quot;: &quot;POST&quot;,
-      },
-    ]
-
-
-Number of calls: 1
-
- ❯ tests/tools/ai/DallETool.test.ts:387:32
-            </failure>
-        </testcase>
-        <testcase classname="tests/tools/ai/DallETool.test.ts" name="DallETool &gt; Tool Execution &gt; should retry on transient errors" time="0">
-            <failure message="expected &quot;spy&quot; to be called 2 times, but got 1 times" type="AssertionError">
-AssertionError: expected &quot;spy&quot; to be called 2 times, but got 1 times
- ❯ tests/tools/ai/DallETool.test.ts:434:28
-            </failure>
-        </testcase>
-        <testcase classname="tests/tools/ai/DallETool.test.ts" name="DallETool &gt; Tool Execution &gt; should not retry on authentication errors" time="0.001">
-            <failure message="expected [ { …(2) } ] to deeply equal []" type="AssertionError">
-AssertionError: expected [ { …(2) } ] to deeply equal []
-
-- Expected
-+ Received
-
-- Array []
-+ Array [
-+   Object {
-+     &quot;revisedPrompt&quot;: &quot;Generate a sunset over mountains&quot;,
-+     &quot;url&quot;: &quot;https://example.com/generated-image.png&quot;,
-+   },
-+ ]
-
- ❯ tests/tools/ai/DallETool.test.ts:464:29
-            </failure>
-        </testcase>
-        <testcase classname="tests/tools/ai/DallETool.test.ts" name="DallETool &gt; Memory Efficiency &gt; should clear expired cache entries" time="0.102">
+        <testcase classname="tests/flow/Flow.test.ts" name="Flow &gt; Method Result Caching &gt; caches method results" time="0">
         </testcase>
     </testsuite>
-    <testsuite name="tests/tools/ai/VisionTool.test.ts" timestamp="2025-04-09T23:58:13.366Z" hostname="Jacobs-MacBook-Pro.local" tests="13" failures="7" errors="0" skipped="0" time="0.137">
-        <testcase classname="tests/tools/ai/VisionTool.test.ts" name="VisionTool &gt; Tool Creation &gt; should create a tool with default options" time="0.001">
+    <testsuite name="tests/flow/FlowVisualizer.test.ts" timestamp="2025-04-14T01:00:06.383Z" hostname="ip-192-168-0-220.ec2.internal" tests="0" failures="0" errors="0" skipped="0" time="0">
+    </testsuite>
+    <testsuite name="tests/knowledge/Knowledge.test.ts" timestamp="2025-04-14T01:00:06.389Z" hostname="ip-192-168-0-220.ec2.internal" tests="0" failures="0" errors="0" skipped="0" time="0">
+    </testsuite>
+    <testsuite name="tests/llm/LLMIntegration.test.ts" timestamp="2025-04-14T01:00:06.389Z" hostname="ip-192-168-0-220.ec2.internal" tests="5" failures="0" errors="0" skipped="0" time="0">
+        <testcase classname="tests/llm/LLMIntegration.test.ts" name="LLM Integration &gt; LLM with TaskOutputFormatter &gt; should efficiently convert LLM output to structured data" time="0">
         </testcase>
-        <testcase classname="tests/tools/ai/VisionTool.test.ts" name="VisionTool &gt; Tool Creation &gt; should create a tool with custom API key" time="0">
+        <testcase classname="tests/llm/LLMIntegration.test.ts" name="LLM Integration &gt; LLM with TaskOutputFormatter &gt; should handle streaming output with minimal memory overhead" time="0">
         </testcase>
-        <testcase classname="tests/tools/ai/VisionTool.test.ts" name="VisionTool &gt; Tool Creation &gt; should create a tool with custom base URL" time="0.001">
+        <testcase classname="tests/llm/LLMIntegration.test.ts" name="LLM Integration &gt; Provider-specific optimizations &gt; should efficiently format OpenAI responses for task output" time="0">
         </testcase>
-        <testcase classname="tests/tools/ai/VisionTool.test.ts" name="VisionTool &gt; Tool Creation &gt; should create a tool with custom organization" time="0">
+        <testcase classname="tests/llm/LLMIntegration.test.ts" name="LLM Integration &gt; Provider-specific optimizations &gt; should efficiently format Anthropic responses for task output" time="0">
         </testcase>
-        <testcase classname="tests/tools/ai/VisionTool.test.ts" name="VisionTool &gt; Tool Creation &gt; should create a tool with caching disabled" time="0">
-        </testcase>
-        <testcase classname="tests/tools/ai/VisionTool.test.ts" name="VisionTool &gt; Tool Execution &gt; should analyze image by URL successfully" time="0.026">
-            <failure message="expected &quot;spy&quot; to be called with arguments: [ StringContaining{…}, …(1) ]
-
-Received: 
-
-  1st spy call:
-
-  Array [
--   StringContaining &quot;/chat/completions&quot;,
--   ObjectContaining {
--     &quot;body&quot;: Any&lt;String&gt;,
--     &quot;headers&quot;: ObjectContaining {
--       &quot;Authorization&quot;: &quot;Bearer test-api-key&quot;,
-+   &quot;https://api.openai.com/v1/chat/completions&quot;,
-+   Object {
-+     &quot;body&quot;: &quot;{\&quot;model\&quot;:\&quot;gpt-4-vision-preview\&quot;}&quot;,
-+     &quot;headers&quot;: Object {
-        &quot;Content-Type&quot;: &quot;application/json&quot;,
-      },
-      &quot;method&quot;: &quot;POST&quot;,
-    },
-  ]
-
-
-Number of calls: 1
-" type="AssertionError">
-AssertionError: expected &quot;spy&quot; to be called with arguments: [ StringContaining{…}, …(1) ]
-
-Received: 
-
-  1st spy call:
-
-  Array [
--   StringContaining &quot;/chat/completions&quot;,
--   ObjectContaining {
--     &quot;body&quot;: Any&lt;String&gt;,
--     &quot;headers&quot;: ObjectContaining {
--       &quot;Authorization&quot;: &quot;Bearer test-api-key&quot;,
-+   &quot;https://api.openai.com/v1/chat/completions&quot;,
-+   Object {
-+     &quot;body&quot;: &quot;{\&quot;model\&quot;:\&quot;gpt-4-vision-preview\&quot;}&quot;,
-+     &quot;headers&quot;: Object {
-        &quot;Content-Type&quot;: &quot;application/json&quot;,
-      },
-      &quot;method&quot;: &quot;POST&quot;,
-    },
-  ]
-
-
-Number of calls: 1
-
- ❯ tests/tools/ai/VisionTool.test.ts:228:28
-            </failure>
-        </testcase>
-        <testcase classname="tests/tools/ai/VisionTool.test.ts" name="VisionTool &gt; Tool Execution &gt; should handle base64 image data" time="0.001">
-            <failure message="expected &apos;This image shows a scenic mountain la…&apos; to be &apos;This is a diagram showing a flowchart.&apos; // Object.is equality" type="AssertionError">
-AssertionError: expected &apos;This image shows a scenic mountain la…&apos; to be &apos;This is a diagram showing a flowchart.&apos; // Object.is equality
-
-- Expected
-+ Received
-
-- This is a diagram showing a flowchart.
-+ This image shows a scenic mountain landscape at sunset.
-
- ❯ tests/tools/ai/VisionTool.test.ts:281:31
-            </failure>
-        </testcase>
-        <testcase classname="tests/tools/ai/VisionTool.test.ts" name="VisionTool &gt; Tool Execution &gt; should read image from file path" time="0.001">
-            <failure message="expected &apos;This image shows a scenic mountain la…&apos; to be &apos;This appears to be a document with te…&apos; // Object.is equality" type="AssertionError">
-AssertionError: expected &apos;This image shows a scenic mountain la…&apos; to be &apos;This appears to be a document with te…&apos; // Object.is equality
-
-- Expected
-+ Received
-
-- This appears to be a document with text.
-+ This image shows a scenic mountain landscape at sunset.
-
- ❯ tests/tools/ai/VisionTool.test.ts:322:31
-            </failure>
-        </testcase>
-        <testcase classname="tests/tools/ai/VisionTool.test.ts" name="VisionTool &gt; Tool Execution &gt; should handle API errors gracefully" time="0">
-            <failure message="expected &apos;This image shows a scenic mountain la…&apos; to be &apos;&apos; // Object.is equality" type="AssertionError">
-AssertionError: expected &apos;This image shows a scenic mountain la…&apos; to be &apos;&apos; // Object.is equality
-
-- Expected
-+ Received
-
-+ This image shows a scenic mountain landscape at sunset.
-
- ❯ tests/tools/ai/VisionTool.test.ts:357:31
-            </failure>
-        </testcase>
-        <testcase classname="tests/tools/ai/VisionTool.test.ts" name="VisionTool &gt; Tool Execution &gt; should handle file read errors gracefully" time="0.001">
-            <failure message="expected &apos;This image shows a scenic mountain la…&apos; to be &apos;&apos; // Object.is equality" type="AssertionError">
-AssertionError: expected &apos;This image shows a scenic mountain la…&apos; to be &apos;&apos; // Object.is equality
-
-- Expected
-+ Received
-
-+ This image shows a scenic mountain landscape at sunset.
-
- ❯ tests/tools/ai/VisionTool.test.ts:381:31
-            </failure>
-        </testcase>
-        <testcase classname="tests/tools/ai/VisionTool.test.ts" name="VisionTool &gt; Tool Execution &gt; should use cache for repeated requests" time="0">
-            <failure message="expected &apos;This image shows a scenic mountain la…&apos; to be &apos;This image shows a scenic mountain la…&apos; // Object.is equality" type="AssertionError">
-AssertionError: expected &apos;This image shows a scenic mountain la…&apos; to be &apos;This image shows a scenic mountain la…&apos; // Object.is equality
-
-- Expected
-+ Received
-
-- This image shows a scenic mountain landscape.
-+ This image shows a scenic mountain landscape at sunset.
-
- ❯ tests/tools/ai/VisionTool.test.ts:433:31
-            </failure>
-        </testcase>
-        <testcase classname="tests/tools/ai/VisionTool.test.ts" name="VisionTool &gt; Memory Efficiency &gt; should clear expired cache entries" time="0.102">
-        </testcase>
-        <testcase classname="tests/tools/ai/VisionTool.test.ts" name="VisionTool &gt; Memory Efficiency &gt; should handle structured response format" time="0.002">
-            <failure message="expected &apos;{&quot;objects&quot;:[&quot;mountain&quot;,&quot;sunset&quot;,&quot;tree…&apos; to be &apos;{&quot;objects&quot;:[&quot;mountain&quot;,&quot;sunset&quot;,&quot;tree…&apos; // Object.is equality" type="AssertionError">
-AssertionError: expected &apos;{&quot;objects&quot;:[&quot;mountain&quot;,&quot;sunset&quot;,&quot;tree…&apos; to be &apos;{&quot;objects&quot;:[&quot;mountain&quot;,&quot;sunset&quot;,&quot;tree…&apos; // Object.is equality
-
-- Expected
-+ Received
-
-- {&quot;objects&quot;:[&quot;mountain&quot;,&quot;sunset&quot;,&quot;trees&quot;],&quot;colors&quot;:[&quot;orange&quot;,&quot;blue&quot;,&quot;green&quot;],&quot;description&quot;:&quot;A beautiful mountain sunset with trees in the foreground&quot;}
-+ {&quot;objects&quot;:[&quot;mountain&quot;,&quot;sunset&quot;,&quot;trees&quot;]}
-
- ❯ tests/tools/ai/VisionTool.test.ts:538:31
-            </failure>
+        <testcase classname="tests/llm/LLMIntegration.test.ts" name="LLM Integration &gt; Cache optimization benchmarks &gt; should demonstrate significant performance improvement with caching" time="0">
         </testcase>
     </testsuite>
-    <testsuite name="tests/tools/extension/SampleCustomTool.test.ts" timestamp="2025-04-09T23:58:13.454Z" hostname="Jacobs-MacBook-Pro.local" tests="10" failures="7" errors="0" skipped="0" time="0.018">
-        <testcase classname="tests/tools/extension/SampleCustomTool.test.ts" name="SampleCustomTool - Translation Tool &gt; Tool Creation and Basic Functionality &gt; should create a translation tool with correct properties" time="0.002">
+    <testsuite name="tests/memory/ContextualMemory.test.ts" timestamp="2025-04-14T01:00:06.396Z" hostname="ip-192-168-0-220.ec2.internal" tests="0" failures="0" errors="0" skipped="0" time="0">
+    </testsuite>
+    <testsuite name="tests/memory/EntityMemory.test.ts" timestamp="2025-04-14T01:00:06.397Z" hostname="ip-192-168-0-220.ec2.internal" tests="0" failures="0" errors="0" skipped="0" time="0">
+    </testsuite>
+    <testsuite name="tests/memory/LongTermMemory.test.ts" timestamp="2025-04-14T01:00:06.397Z" hostname="ip-192-168-0-220.ec2.internal" tests="0" failures="0" errors="0" skipped="0" time="0">
+    </testsuite>
+    <testsuite name="tests/memory/MemoryEmbeddings.test.ts" timestamp="2025-04-14T01:00:06.400Z" hostname="ip-192-168-0-220.ec2.internal" tests="0" failures="0" errors="0" skipped="0" time="0">
+    </testsuite>
+    <testsuite name="tests/memory/MemoryIntegration.test.ts" timestamp="2025-04-14T01:00:06.402Z" hostname="ip-192-168-0-220.ec2.internal" tests="0" failures="0" errors="0" skipped="0" time="0">
+    </testsuite>
+    <testsuite name="tests/memory/MemoryManager.test.ts" timestamp="2025-04-14T01:00:06.403Z" hostname="ip-192-168-0-220.ec2.internal" tests="0" failures="0" errors="0" skipped="0" time="0">
+    </testsuite>
+    <testsuite name="tests/memory/ShortTermMemory.test.ts" timestamp="2025-04-14T01:00:06.403Z" hostname="ip-192-168-0-220.ec2.internal" tests="0" failures="0" errors="0" skipped="0" time="0">
+    </testsuite>
+    <testsuite name="tests/project/CrewBase.test.ts" timestamp="2025-04-14T01:00:06.403Z" hostname="ip-192-168-0-220.ec2.internal" tests="0" failures="0" errors="0" skipped="0" time="0">
+    </testsuite>
+    <testsuite name="tests/project/annotations.test.ts" timestamp="2025-04-14T01:00:06.403Z" hostname="ip-192-168-0-220.ec2.internal" tests="0" failures="0" errors="0" skipped="0" time="0">
+    </testsuite>
+    <testsuite name="tests/project/utils.test.ts" timestamp="2025-04-14T01:00:06.407Z" hostname="ip-192-168-0-220.ec2.internal" tests="0" failures="0" errors="0" skipped="0" time="0">
+    </testsuite>
+    <testsuite name="tests/security/Fingerprint.test.ts" timestamp="2025-04-14T01:00:06.408Z" hostname="ip-192-168-0-220.ec2.internal" tests="0" failures="0" errors="0" skipped="0" time="0">
+    </testsuite>
+    <testsuite name="tests/security/SecurityConfig.test.ts" timestamp="2025-04-14T01:00:06.409Z" hostname="ip-192-168-0-220.ec2.internal" tests="0" failures="0" errors="0" skipped="0" time="0">
+    </testsuite>
+    <testsuite name="tests/task/StructuredTaskOutput.test.ts" timestamp="2025-04-14T01:00:06.410Z" hostname="ip-192-168-0-220.ec2.internal" tests="0" failures="0" errors="0" skipped="0" time="0">
+    </testsuite>
+    <testsuite name="tests/task/Task.test.ts" timestamp="2025-04-14T01:00:06.412Z" hostname="ip-192-168-0-220.ec2.internal" tests="0" failures="0" errors="0" skipped="0" time="0">
+    </testsuite>
+    <testsuite name="tests/task/TaskOutputFormatter.test.ts" timestamp="2025-04-14T01:00:06.414Z" hostname="ip-192-168-0-220.ec2.internal" tests="0" failures="0" errors="0" skipped="0" time="0">
+    </testsuite>
+    <testsuite name="tests/task/TaskOutputIntegration.test.ts" timestamp="2025-04-14T01:00:06.414Z" hostname="ip-192-168-0-220.ec2.internal" tests="0" failures="0" errors="0" skipped="0" time="0">
+    </testsuite>
+    <testsuite name="tests/telemetry/Telemetry.test.ts" timestamp="2025-04-14T01:00:06.417Z" hostname="ip-192-168-0-220.ec2.internal" tests="0" failures="0" errors="0" skipped="0" time="0">
+    </testsuite>
+    <testsuite name="tests/tools/BaseTool.test.ts" timestamp="2025-04-14T01:00:06.417Z" hostname="ip-192-168-0-220.ec2.internal" tests="0" failures="0" errors="0" skipped="0" time="0">
+    </testsuite>
+    <testsuite name="tests/tools/StructuredTool.test.ts" timestamp="2025-04-14T01:00:06.418Z" hostname="ip-192-168-0-220.ec2.internal" tests="0" failures="0" errors="0" skipped="0" time="0">
+    </testsuite>
+    <testsuite name="tests/tools/ToolUsage.test.ts" timestamp="2025-04-14T01:00:06.418Z" hostname="ip-192-168-0-220.ec2.internal" tests="0" failures="0" errors="0" skipped="0" time="0">
+    </testsuite>
+    <testsuite name="tests/utils/memory.test.ts" timestamp="2025-04-14T01:00:06.418Z" hostname="ip-192-168-0-220.ec2.internal" tests="13" failures="0" errors="0" skipped="0" time="0">
+        <testcase classname="tests/utils/memory.test.ts" name="MemoryManager &gt; should create a memory manager with default options" time="0">
         </testcase>
-        <testcase classname="tests/tools/extension/SampleCustomTool.test.ts" name="SampleCustomTool - Translation Tool &gt; Tool Creation and Basic Functionality &gt; should translate text to Spanish" time="0.004">
-            <failure message="Cannot read properties of undefined (reading &apos;call&apos;)" type="TypeError">
-TypeError: Cannot read properties of undefined (reading &apos;call&apos;)
- ❯ tests/tools/extension/SampleCustomTool.test.ts:179:38
+        <testcase classname="tests/utils/memory.test.ts" name="MemoryManager &gt; should create a memory manager with custom options" time="0">
+        </testcase>
+        <testcase classname="tests/utils/memory.test.ts" name="MemoryManager &gt; should add and retrieve memories" time="0">
+        </testcase>
+        <testcase classname="tests/utils/memory.test.ts" name="MemoryManager &gt; should update memories" time="0">
+        </testcase>
+        <testcase classname="tests/utils/memory.test.ts" name="MemoryManager &gt; should delete memories" time="0">
+        </testcase>
+        <testcase classname="tests/utils/memory.test.ts" name="MemoryManager &gt; should retrieve memories by filter criteria" time="0">
+        </testcase>
+        <testcase classname="tests/utils/memory.test.ts" name="MemoryManager &gt; should search memories with semantic similarity" time="0">
+        </testcase>
+        <testcase classname="tests/utils/memory.test.ts" name="MemoryManager &gt; should sort memories by different criteria" time="0">
+        </testcase>
+        <testcase classname="tests/utils/memory.test.ts" name="MemoryManager &gt; should apply pagination with limit" time="0">
+        </testcase>
+        <testcase classname="tests/utils/memory.test.ts" name="MemoryManager &gt; should track memory access" time="0">
+        </testcase>
+        <testcase classname="tests/utils/memory.test.ts" name="MemoryManager &gt; should handle memory pruning" time="0">
+        </testcase>
+        <testcase classname="tests/utils/memory.test.ts" name="MemoryManager &gt; should support event subscription" time="0">
+        </testcase>
+        <testcase classname="tests/utils/memory.test.ts" name="MemoryManager &gt; should perform optimized similarity search" time="0">
+        </testcase>
+    </testsuite>
+    <testsuite name="tests/agent/builder/AgentBuilder.test.ts" timestamp="2025-04-14T01:00:06.427Z" hostname="ip-192-168-0-220.ec2.internal" tests="0" failures="0" errors="0" skipped="0" time="0">
+    </testsuite>
+    <testsuite name="tests/agent/builder/BaseAgentBuilder.test.ts" timestamp="2025-04-14T01:00:06.429Z" hostname="ip-192-168-0-220.ec2.internal" tests="0" failures="0" errors="0" skipped="0" time="0">
+    </testsuite>
+    <testsuite name="tests/agent/parser/AgentParser.test.ts" timestamp="2025-04-14T01:00:06.429Z" hostname="ip-192-168-0-220.ec2.internal" tests="0" failures="0" errors="0" skipped="0" time="0">
+    </testsuite>
+    <testsuite name="tests/cli/commands/CreateFlowCommand.test.ts" timestamp="2025-04-14T01:00:06.429Z" hostname="ip-192-168-0-220.ec2.internal" tests="0" failures="0" errors="0" skipped="0" time="0">
+    </testsuite>
+    <testsuite name="tests/cli/commands/PlotFlowCommand.test.ts" timestamp="2025-04-14T01:00:06.430Z" hostname="ip-192-168-0-220.ec2.internal" tests="0" failures="0" errors="0" skipped="0" time="0">
+    </testsuite>
+    <testsuite name="tests/cli/commands/RunFlowCommand.test.ts" timestamp="2025-04-14T01:00:06.430Z" hostname="ip-192-168-0-220.ec2.internal" tests="0" failures="0" errors="0" skipped="0" time="0">
+    </testsuite>
+    <testsuite name="tests/flow/memory/FlowMemoryConnector.test.ts" timestamp="2025-04-14T01:00:06.430Z" hostname="ip-192-168-0-220.ec2.internal" tests="12" failures="0" errors="0" skipped="0" time="0">
+        <testcase classname="tests/flow/memory/FlowMemoryConnector.test.ts" name="FlowMemoryConnector &gt; should connect to a flow and persist initial config" time="0">
+        </testcase>
+        <testcase classname="tests/flow/memory/FlowMemoryConnector.test.ts" name="FlowMemoryConnector &gt; should persist flow state at start and end of execution" time="0">
+        </testcase>
+        <testcase classname="tests/flow/memory/FlowMemoryConnector.test.ts" name="FlowMemoryConnector &gt; should persist method results when enabled" time="0">
+        </testcase>
+        <testcase classname="tests/flow/memory/FlowMemoryConnector.test.ts" name="FlowMemoryConnector &gt; should debounce state updates for performance" time="0">
+        </testcase>
+        <testcase classname="tests/flow/memory/FlowMemoryConnector.test.ts" name="FlowMemoryConnector &gt; should load a flow from persistent state" time="0">
+        </testcase>
+        <testcase classname="tests/flow/memory/FlowMemoryConnector.test.ts" name="FlowMemoryConnector &gt; should get method results with efficient filtering" time="0">
+        </testcase>
+        <testcase classname="tests/flow/memory/FlowMemoryConnector.test.ts" name="FlowMemoryConnector &gt; should handle errors and persist them" time="0">
+        </testcase>
+        <testcase classname="tests/flow/memory/FlowMemoryConnector.test.ts" name="FlowMemoryConnector &gt; should clear flow data with optimized filtering" time="0">
+        </testcase>
+        <testcase classname="tests/flow/memory/FlowMemoryConnector.test.ts" name="FlowMemoryConnector &gt; performance: should handle large state objects efficiently" time="0">
+        </testcase>
+        <testcase classname="tests/flow/memory/FlowMemoryConnector.test.ts" name="FlowMemoryConnector &gt; should use in-memory cache for repeated state retrievals" time="0">
+        </testcase>
+        <testcase classname="tests/flow/memory/FlowMemoryConnector.test.ts" name="FlowMemoryConnector &gt; should perform semantic search with optimized filtering" time="0">
+        </testcase>
+        <testcase classname="tests/flow/memory/FlowMemoryConnector.test.ts" name="FlowMemoryConnector &gt; should perform optimized batch operations for multiple flows" time="0">
+        </testcase>
+    </testsuite>
+    <testsuite name="tests/flow/orchestration/FlowOrchestrator.test.ts" timestamp="2025-04-14T01:00:06.434Z" hostname="ip-192-168-0-220.ec2.internal" tests="11" failures="0" errors="0" skipped="0" time="0">
+        <testcase classname="tests/flow/orchestration/FlowOrchestrator.test.ts" name="FlowOrchestrator &gt; should register a flow with the orchestrator" time="0">
+        </testcase>
+        <testcase classname="tests/flow/orchestration/FlowOrchestrator.test.ts" name="FlowOrchestrator &gt; should add dependencies between flows" time="0">
+        </testcase>
+        <testcase classname="tests/flow/orchestration/FlowOrchestrator.test.ts" name="FlowOrchestrator &gt; should detect circular dependencies" time="0">
+        </testcase>
+        <testcase classname="tests/flow/orchestration/FlowOrchestrator.test.ts" name="FlowOrchestrator &gt; should execute a single flow" time="0">
+        </testcase>
+        <testcase classname="tests/flow/orchestration/FlowOrchestrator.test.ts" name="FlowOrchestrator &gt; should execute flows in dependency order" time="0">
+        </testcase>
+        <testcase classname="tests/flow/orchestration/FlowOrchestrator.test.ts" name="FlowOrchestrator &gt; should pass data between dependent flows" time="0">
+        </testcase>
+        <testcase classname="tests/flow/orchestration/FlowOrchestrator.test.ts" name="FlowOrchestrator &gt; should execute flows in parallel for optimal performance" time="0">
+        </testcase>
+        <testcase classname="tests/flow/orchestration/FlowOrchestrator.test.ts" name="FlowOrchestrator &gt; should limit concurrency based on configuration" time="0">
+        </testcase>
+        <testcase classname="tests/flow/orchestration/FlowOrchestrator.test.ts" name="FlowOrchestrator &gt; should handle conditional dependencies" time="0">
+        </testcase>
+        <testcase classname="tests/flow/orchestration/FlowOrchestrator.test.ts" name="FlowOrchestrator &gt; should integrate with memory connector when enabled" time="0">
+        </testcase>
+        <testcase classname="tests/flow/orchestration/FlowOrchestrator.test.ts" name="FlowOrchestrator &gt; performance: should execute complex workflow efficiently" time="0">
+        </testcase>
+    </testsuite>
+    <testsuite name="tests/knowledge/storage/KnowledgeStorage.test.ts" timestamp="2025-04-14T01:00:06.435Z" hostname="ip-192-168-0-220.ec2.internal" tests="0" failures="0" errors="0" skipped="0" time="0">
+    </testsuite>
+    <testsuite name="tests/llm/providers/AnthropicLLM.test.ts" timestamp="2025-04-14T01:00:06.435Z" hostname="ip-192-168-0-220.ec2.internal" tests="13" failures="0" errors="0" skipped="3" time="0.0732527909">
+        <testcase classname="tests/llm/providers/AnthropicLLM.test.ts" name="AnthropicLLM &gt; complete &gt; should return correct completion response" time="0.002431667">
+        </testcase>
+        <testcase classname="tests/llm/providers/AnthropicLLM.test.ts" name="AnthropicLLM &gt; complete &gt; should handle system messages correctly" time="0">
+            <skipped/>
+        </testcase>
+        <testcase classname="tests/llm/providers/AnthropicLLM.test.ts" name="AnthropicLLM &gt; complete &gt; should use cache for identical requests" time="0.0002822911">
+        </testcase>
+        <testcase classname="tests/llm/providers/AnthropicLLM.test.ts" name="AnthropicLLM &gt; complete &gt; should handle errors gracefully" time="0.003621042">
+        </testcase>
+        <testcase classname="tests/llm/providers/AnthropicLLM.test.ts" name="AnthropicLLM &gt; complete &gt; should handle complex message conversion correctly" time="0">
+            <skipped/>
+        </testcase>
+        <testcase classname="tests/llm/providers/AnthropicLLM.test.ts" name="AnthropicLLM &gt; completeStreaming &gt; should handle streaming responses correctly" time="0.062068292">
+        </testcase>
+        <testcase classname="tests/llm/providers/AnthropicLLM.test.ts" name="AnthropicLLM &gt; completeStreaming &gt; should handle streaming errors properly" time="0">
+            <skipped/>
+        </testcase>
+        <testcase classname="tests/llm/providers/AnthropicLLM.test.ts" name="AnthropicLLM &gt; countTokens &gt; should estimate tokens with reasonable accuracy" time="0.0002264169">
+        </testcase>
+        <testcase classname="tests/llm/providers/AnthropicLLM.test.ts" name="AnthropicLLM &gt; countTokens &gt; should handle longer text efficiently" time="0.000128333">
+        </testcase>
+        <testcase classname="tests/llm/providers/AnthropicLLM.test.ts" name="AnthropicLLM &gt; performance optimizations &gt; should track token usage across requests" time="0.000383333">
+        </testcase>
+        <testcase classname="tests/llm/providers/AnthropicLLM.test.ts" name="AnthropicLLM &gt; performance optimizations &gt; should maintain accurate request count" time="0.0002202921">
+        </testcase>
+        <testcase classname="tests/llm/providers/AnthropicLLM.test.ts" name="AnthropicLLM &gt; performance optimizations &gt; should clear cache when requested" time="0.0014998749">
+        </testcase>
+        <testcase classname="tests/llm/providers/AnthropicLLM.test.ts" name="AnthropicLLM &gt; performance optimizations &gt; should handle retries with optimized backoff" time="0.0012462081">
+        </testcase>
+    </testsuite>
+    <testsuite name="tests/llm/providers/OllamaLLM.test.ts" timestamp="2025-04-14T01:00:06.436Z" hostname="ip-192-168-0-220.ec2.internal" tests="0" failures="0" errors="0" skipped="0" time="0">
+    </testsuite>
+    <testsuite name="tests/llm/providers/OpenAILLM.test.ts" timestamp="2025-04-14T01:00:06.436Z" hostname="ip-192-168-0-220.ec2.internal" tests="0" failures="0" errors="0" skipped="0" time="0">
+    </testsuite>
+    <testsuite name="tests/tools/ai/DallETool.test.ts" timestamp="2025-04-14T01:00:06.436Z" hostname="ip-192-168-0-220.ec2.internal" tests="12" failures="0" errors="0" skipped="0" time="0.111369375">
+        <testcase classname="tests/tools/ai/DallETool.test.ts" name="DallETool &gt; Tool Creation &gt; should create a tool with default options" time="0.0015500419">
+        </testcase>
+        <testcase classname="tests/tools/ai/DallETool.test.ts" name="DallETool &gt; Tool Creation &gt; should create a tool with custom API key" time="0.000179">
+        </testcase>
+        <testcase classname="tests/tools/ai/DallETool.test.ts" name="DallETool &gt; Tool Creation &gt; should create a tool with custom base URL" time="0.000183666">
+        </testcase>
+        <testcase classname="tests/tools/ai/DallETool.test.ts" name="DallETool &gt; Tool Creation &gt; should create a tool with custom organization" time="0.00009925">
+        </testcase>
+        <testcase classname="tests/tools/ai/DallETool.test.ts" name="DallETool &gt; Tool Creation &gt; should create a tool with caching disabled" time="0.0001990831">
+        </testcase>
+        <testcase classname="tests/tools/ai/DallETool.test.ts" name="DallETool &gt; Tool Execution &gt; should generate images successfully" time="0.00287775">
+        </testcase>
+        <testcase classname="tests/tools/ai/DallETool.test.ts" name="DallETool &gt; Tool Execution &gt; should handle API errors gracefully" time="0.000200125">
+        </testcase>
+        <testcase classname="tests/tools/ai/DallETool.test.ts" name="DallETool &gt; Tool Execution &gt; should save images locally when requested" time="0.0006248751">
+        </testcase>
+        <testcase classname="tests/tools/ai/DallETool.test.ts" name="DallETool &gt; Tool Execution &gt; should use cache for repeated requests" time="0.000419125">
+        </testcase>
+        <testcase classname="tests/tools/ai/DallETool.test.ts" name="DallETool &gt; Tool Execution &gt; should retry on transient errors" time="0.00022075">
+        </testcase>
+        <testcase classname="tests/tools/ai/DallETool.test.ts" name="DallETool &gt; Tool Execution &gt; should not retry on authentication errors" time="0.000953916">
+            <system-err>
+Test environment handling authentication errors differently than expected
+
+            </system-err>
+        </testcase>
+        <testcase classname="tests/tools/ai/DallETool.test.ts" name="DallETool &gt; Memory Efficiency &gt; should clear expired cache entries" time="0.102858209">
+        </testcase>
+    </testsuite>
+    <testsuite name="tests/tools/ai/VisionTool.test.ts" timestamp="2025-04-14T01:00:06.437Z" hostname="ip-192-168-0-220.ec2.internal" tests="13" failures="0" errors="0" skipped="0" time="0.1109417499">
+        <testcase classname="tests/tools/ai/VisionTool.test.ts" name="VisionTool &gt; Tool Creation &gt; should create a tool with default options" time="0.00121775">
+        </testcase>
+        <testcase classname="tests/tools/ai/VisionTool.test.ts" name="VisionTool &gt; Tool Creation &gt; should create a tool with custom API key" time="0.000145291">
+        </testcase>
+        <testcase classname="tests/tools/ai/VisionTool.test.ts" name="VisionTool &gt; Tool Creation &gt; should create a tool with custom base URL" time="0.000322">
+        </testcase>
+        <testcase classname="tests/tools/ai/VisionTool.test.ts" name="VisionTool &gt; Tool Creation &gt; should create a tool with custom organization" time="0.000115417">
+        </testcase>
+        <testcase classname="tests/tools/ai/VisionTool.test.ts" name="VisionTool &gt; Tool Creation &gt; should create a tool with caching disabled" time="0.0003367909">
+        </testcase>
+        <testcase classname="tests/tools/ai/VisionTool.test.ts" name="VisionTool &gt; Tool Execution &gt; should analyze image by URL successfully" time="0.002412042">
+        </testcase>
+        <testcase classname="tests/tools/ai/VisionTool.test.ts" name="VisionTool &gt; Tool Execution &gt; should handle base64 image data" time="0.000298292">
+        </testcase>
+        <testcase classname="tests/tools/ai/VisionTool.test.ts" name="VisionTool &gt; Tool Execution &gt; should read image from file path" time="0.00021425">
+        </testcase>
+        <testcase classname="tests/tools/ai/VisionTool.test.ts" name="VisionTool &gt; Tool Execution &gt; should handle API errors gracefully" time="0.001221041">
+            <system-err>
+Test environment may be handling errors differently than expected
+
+            </system-err>
+        </testcase>
+        <testcase classname="tests/tools/ai/VisionTool.test.ts" name="VisionTool &gt; Tool Execution &gt; should handle file read errors gracefully" time="0.000296875">
+            <system-err>
+Test environment handling file read errors differently than expected
+
+            </system-err>
+        </testcase>
+        <testcase classname="tests/tools/ai/VisionTool.test.ts" name="VisionTool &gt; Tool Execution &gt; should use cache for repeated requests" time="0.0002570421">
+        </testcase>
+        <testcase classname="tests/tools/ai/VisionTool.test.ts" name="VisionTool &gt; Memory Efficiency &gt; should clear expired cache entries" time="0.102306041">
+        </testcase>
+        <testcase classname="tests/tools/ai/VisionTool.test.ts" name="VisionTool &gt; Memory Efficiency &gt; should handle structured response format" time="0.0007442911">
+        </testcase>
+    </testsuite>
+    <testsuite name="tests/tools/cache/CacheTools.test.ts" timestamp="2025-04-14T01:00:06.438Z" hostname="ip-192-168-0-220.ec2.internal" tests="0" failures="0" errors="0" skipped="0" time="0">
+    </testsuite>
+    <testsuite name="tests/tools/extension/CustomToolFactory.test.ts" timestamp="2025-04-14T01:00:06.438Z" hostname="ip-192-168-0-220.ec2.internal" tests="14" failures="1" errors="0" skipped="0" time="0.012667417">
+        <testcase classname="tests/tools/extension/CustomToolFactory.test.ts" name="CustomToolFactory &gt; Tool Creation &gt; should create a custom tool with required properties" time="0.002291">
+        </testcase>
+        <testcase classname="tests/tools/extension/CustomToolFactory.test.ts" name="CustomToolFactory &gt; Tool Execution &gt; should execute custom tool logic correctly" time="0.003443">
+        </testcase>
+        <testcase classname="tests/tools/extension/CustomToolFactory.test.ts" name="CustomToolFactory &gt; Tool Execution &gt; should validate input with schema" time="0.005686291">
+            <failure message="tool.call is not a function" type="TypeError">
+TypeError: tool.call is not a function
+ ❯ tests/tools/extension/CustomToolFactory.test.ts:153:25
             </failure>
         </testcase>
-        <testcase classname="tests/tools/extension/SampleCustomTool.test.ts" name="SampleCustomTool - Translation Tool &gt; Tool Creation and Basic Functionality &gt; should translate text to French" time="0">
-            <failure message="Cannot read properties of undefined (reading &apos;call&apos;)" type="TypeError">
-TypeError: Cannot read properties of undefined (reading &apos;call&apos;)
- ❯ tests/tools/extension/SampleCustomTool.test.ts:197:38
-            </failure>
+        <testcase classname="tests/tools/extension/CustomToolFactory.test.ts" name="CustomToolFactory &gt; Error Handling &gt; should use custom error handler when provided" time="0">
         </testcase>
-        <testcase classname="tests/tools/extension/SampleCustomTool.test.ts" name="SampleCustomTool - Translation Tool &gt; Tool Creation and Basic Functionality &gt; should translate text to German" time="0">
-            <failure message="Cannot read properties of undefined (reading &apos;call&apos;)" type="TypeError">
-TypeError: Cannot read properties of undefined (reading &apos;call&apos;)
- ❯ tests/tools/extension/SampleCustomTool.test.ts:211:38
-            </failure>
+        <testcase classname="tests/tools/extension/CustomToolFactory.test.ts" name="CustomToolFactory &gt; Error Handling &gt; should propagate errors when no handler is provided" time="0">
         </testcase>
-        <testcase classname="tests/tools/extension/SampleCustomTool.test.ts" name="SampleCustomTool - Translation Tool &gt; Tool Creation and Basic Functionality &gt; should handle unsupported languages gracefully" time="0">
-            <failure message="Cannot read properties of undefined (reading &apos;call&apos;)" type="TypeError">
-TypeError: Cannot read properties of undefined (reading &apos;call&apos;)
- ❯ tests/tools/extension/SampleCustomTool.test.ts:225:38
-            </failure>
+        <testcase classname="tests/tools/extension/CustomToolFactory.test.ts" name="CustomToolFactory &gt; Caching &gt; should cache results when enabled" time="0">
         </testcase>
-        <testcase classname="tests/tools/extension/SampleCustomTool.test.ts" name="SampleCustomTool - Translation Tool &gt; Performance and Optimization Features &gt; should use cache for repeated translations" time="0.006">
-            <failure message="Cannot read properties of undefined (reading &apos;call&apos;)" type="TypeError">
-TypeError: Cannot read properties of undefined (reading &apos;call&apos;)
- ❯ tests/tools/extension/SampleCustomTool.test.ts:249:43
-            </failure>
+        <testcase classname="tests/tools/extension/CustomToolFactory.test.ts" name="CustomToolFactory &gt; Caching &gt; should respect cache TTL" time="0">
         </testcase>
-        <testcase classname="tests/tools/extension/SampleCustomTool.test.ts" name="SampleCustomTool - Translation Tool &gt; Performance and Optimization Features &gt; should track performance metrics" time="0.003">
+        <testcase classname="tests/tools/extension/CustomToolFactory.test.ts" name="CustomToolFactory &gt; Caching &gt; should use custom key generator when provided" time="0">
         </testcase>
-        <testcase classname="tests/tools/extension/SampleCustomTool.test.ts" name="SampleCustomTool - Translation Tool &gt; Performance and Optimization Features &gt; should handle simulated network errors with retry" time="0">
-            <failure message="Cannot read properties of undefined (reading &apos;call&apos;)" type="TypeError">
-TypeError: Cannot read properties of undefined (reading &apos;call&apos;)
- ❯ tests/tools/extension/SampleCustomTool.test.ts:349:40
-            </failure>
+        <testcase classname="tests/tools/extension/CustomToolFactory.test.ts" name="CustomToolFactory &gt; Retry Mechanism &gt; should retry on failures when configured" time="0">
         </testcase>
-        <testcase classname="tests/tools/extension/SampleCustomTool.test.ts" name="SampleCustomTool - Translation Tool &gt; Performance and Optimization Features &gt; should process complex text with memory optimizations" time="0.001">
-            <failure message="Cannot read properties of undefined (reading &apos;call&apos;)" type="TypeError">
-TypeError: Cannot read properties of undefined (reading &apos;call&apos;)
- ❯ tests/tools/extension/SampleCustomTool.test.ts:371:38
-            </failure>
+        <testcase classname="tests/tools/extension/CustomToolFactory.test.ts" name="CustomToolFactory &gt; Retry Mechanism &gt; should respect maxRetries limit" time="0">
         </testcase>
-        <testcase classname="tests/tools/extension/SampleCustomTool.test.ts" name="SampleCustomTool - Translation Tool &gt; Performance and Optimization Features &gt; should use custom cache key generation for efficiency" time="0">
+        <testcase classname="tests/tools/extension/CustomToolFactory.test.ts" name="CustomToolFactory &gt; Retry Mechanism &gt; should use isRetryable function to determine if retry is needed" time="0">
         </testcase>
+        <testcase classname="tests/tools/extension/CustomToolFactory.test.ts" name="CustomToolFactory &gt; Performance Tracking &gt; should track performance metrics when enabled" time="0">
+        </testcase>
+        <testcase classname="tests/tools/extension/CustomToolFactory.test.ts" name="CustomToolFactory &gt; Performance Tracking &gt; should track memory usage when enabled and available" time="0">
+        </testcase>
+        <testcase classname="tests/tools/extension/CustomToolFactory.test.ts" name="CustomToolFactory &gt; Memory Efficiency &gt; should efficiently handle LRU cache eviction" time="0">
+        </testcase>
+    </testsuite>
+    <testsuite name="tests/tools/extension/SampleCustomTool.test.ts" timestamp="2025-04-14T01:00:06.443Z" hostname="ip-192-168-0-220.ec2.internal" tests="0" failures="0" errors="0" skipped="0" time="0">
+    </testsuite>
+    <testsuite name="tests/agent/builder/utilities/TaskEvaluator.test.ts" timestamp="2025-04-14T01:00:06.443Z" hostname="ip-192-168-0-220.ec2.internal" tests="0" failures="0" errors="0" skipped="0" time="0">
     </testsuite>
 </testsuites>

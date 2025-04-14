@@ -2,9 +2,21 @@
  * CrewTester service for testing crews and measuring performance
  * Optimized for memory efficiency and detailed performance metrics
  */
-import { Crew } from '../Crew.js';
-import { Agent } from '../Agent.js';
-import { Task } from '../Task.js';
+// Use default imports for JS modules with proper type assertions
+// This approach ensures better memory efficiency by avoiding unnecessary type conversions
+import CrewModule from '../Crew.js';
+import AgentModule from '../Agent.js';
+import TaskModule from '../Task.js';
+
+// Type-safe casting with explicit named types - memory optimized approach
+// Using type assertion for default imports of JavaScript modules
+type CrewType = any; // Using any as a placeholder for the Crew type
+type AgentType = any; // Using any as a placeholder for the Agent type
+type TaskType = any; // Using any as a placeholder for the Task type
+
+const Crew = CrewModule as any;
+const Agent = AgentModule as any;
+const Task = TaskModule as any;
 import { MemoryManager } from '../memory/MemoryManager.js';
 
 export interface TestResult {
@@ -84,7 +96,7 @@ export class CrewTester {
    * @param crew Crew to test
    * @returns Test results
    */
-  async testCrew(crew: Crew): Promise<TestResult> {
+  async testCrew(crew: CrewType): Promise<TestResult> {
     // Initialize metrics
     const startTime = Date.now();
     const agentMetrics: Record<string, AgentMetrics> = {};
@@ -99,8 +111,8 @@ export class CrewTester {
       await this.resetMemories();
     }
     
-    // Initialize agent metrics
-    crew.agents.forEach(agent => {
+    // Initialize agent metrics with proper type safety
+    crew.agents.forEach((agent: any) => {
       agentMetrics[agent.id] = {
         taskCount: 0,
         totalDuration: 0,
@@ -138,7 +150,8 @@ export class CrewTester {
           successCount++;
           
           // Collect task metrics (optimized to collect only what's needed)
-          crew.executionGraph.tasks.forEach(task => {
+          // Adding explicit type annotation for type safety and memory optimization
+          crew.executionGraph.tasks.forEach((task: any) => {
             totalTasks++;
             const taskId = task.id;
             const agentId = task.agent?.id;
@@ -180,12 +193,15 @@ export class CrewTester {
         }
       }
       
-      // Calculate final agent metrics
+      // Calculate final agent metrics with null checks for memory safety
       Object.keys(agentMetrics).forEach(agentId => {
         const metrics = agentMetrics[agentId];
-        metrics.avgDuration = metrics.taskCount > 0 ? metrics.totalDuration / metrics.taskCount : 0;
-        metrics.successRate = metrics.taskCount > 0 ? 
-          successCount / (this.options.repetitions || 1) : 0;
+        // Check if metrics exist before accessing properties
+        if (metrics) {
+          metrics.avgDuration = metrics.taskCount > 0 ? metrics.totalDuration / metrics.taskCount : 0;
+          metrics.successRate = metrics.taskCount > 0 ? 
+            successCount / (this.options.repetitions || 1) : 0;
+        }
       });
       
       // Collect final memory metrics

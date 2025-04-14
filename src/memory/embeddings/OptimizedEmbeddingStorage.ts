@@ -443,12 +443,16 @@ export class OptimizedEmbeddingStorage {
    * Reduce precision of float32 values to simulate 16-bit storage
    */
   private reduceFloat32Precision(vector: number[]): Float32Array {
+    // Pre-allocate result array for memory efficiency
     const result = new Float32Array(vector.length);
     
     // Simulate 16-bit precision by truncating mantissa bits
     for (let i = 0; i < vector.length; i++) {
+      // Safely access array element with type checking for memory optimization
+      const value = vector[i] ?? 0; // Default to 0 if undefined
+      
       // Convert to binary representation and back with reduced precision
-      const truncated = Math.fround(vector[i]); // This forces 32-bit precision first
+      const truncated = Math.fround(value); // This forces 32-bit precision first
       
       // Further reduce by truncating least significant bits
       // This simulates 16-bit float behavior while still using 32-bit storage
@@ -466,72 +470,101 @@ export class OptimizedEmbeddingStorage {
     quantized: Uint8Array | Int8Array;
     params: QuantizationParams;
   } {
-    let quantized: Uint8Array | Int8Array;
-    let params: QuantizationParams;
-    
+    let quantized: Uint8Array | Int8Array | null = null;
+    let params: QuantizationParams = { min: 0, max: 1, scale: 1, offset: 0 };
+
     switch (method) {
       case 'minmax': {
+        // Handle empty vector case
+        if (vector.length === 0) {
+          throw new Error('Cannot quantize empty vector');
+        }
+
         // Find min and max values
-        const min = Math.min(...vector);
-        const max = Math.max(...vector);
+        const min = Math.min(...vector) || 0;
+        const max = Math.max(...vector) || 0;
         const range = max - min;
         
-        // Avoid division by zero
-        const scale = range > 0 ? 255 / range : 1;
+        const safeScale = range > 0 ? 255 / range : 1;
+        const safeQuantized = new Uint8Array(vector.length);
         
-        // Convert to 0-255 range (uint8)
-        quantized = new Uint8Array(vector.length);
         for (let i = 0; i < vector.length; i++) {
-          quantized[i] = Math.round((vector[i] - min) * scale);
+          const value = vector[i] || 0;
+          safeQuantized[i] = Math.round((value - min) * safeScale);
         }
         
-        params = { min, max, scale, offset: min };
+        quantized = safeQuantized;
+        params = { 
+          min: min,
+          max: max,
+          scale: safeScale,
+          offset: min
+        };
         break;
       }
       
       case 'centered': {
-        // Center around zero, use signed integers (-128 to 127)
-        const absMax = Math.max(...vector.map(Math.abs));
-        const scale = absMax > 0 ? 127 / absMax : 1;
+        // Handle empty vector case
+        if (vector.length === 0) {
+          throw new Error('Cannot quantize empty vector');
+        }
+
+        // Find maximum absolute value
+        const absMax = Math.max(...vector.map(Math.abs)) || 0;
+        const safeScale = absMax > 0 ? 127 / absMax : 1;
         
-        quantized = new Int8Array(vector.length);
+        const safeQuantized = new Int8Array(vector.length);
         for (let i = 0; i < vector.length; i++) {
-          quantized[i] = Math.max(-128, Math.min(127, Math.round(vector[i] * scale)));
+          const value = vector[i] || 0;
+          safeQuantized[i] = Math.max(-128, Math.min(127, Math.round(value * safeScale)));
         }
         
-        params = { min: -absMax, max: absMax, scale, offset: 0 };
+        quantized = safeQuantized;
+        params = { 
+          min: -absMax,
+          max: absMax,
+          scale: safeScale,
+          offset: 0
+        };
         break;
       }
       
       case 'logarithmic': {
-        // Logarithmic quantization for values with logarithmic distribution
-        const epsilon = 1e-6; // Small value to avoid log(0)
-        const absValues = vector.map(v => Math.abs(v) + epsilon);
-        const logValues = absValues.map(Math.log);
-        const minLog = Math.min(...logValues);
-        const maxLog = Math.max(...logValues);
-        const logRange = maxLog - minLog;
-        const scale = logRange > 0 ? 255 / logRange : 1;
+        // Handle empty vector case
+        if (vector.length === 0) {
+          throw new Error('Cannot quantize empty vector');
+        }
+
+        // Find maximum absolute value
+        const absMax = Math.max(...vector.map(Math.abs));
+        // Use a small epsilon to avoid log(0)
+        const epsilon = absMax === 0 ? 1e-6 : absMax;
+        const safeScale = Math.log(epsilon) / 127;
         
-        // Use 8 bits, preserving sign in a separate bit
-        quantized = new Uint8Array(vector.length);
+        const safeQuantized = new Uint8Array(vector.length);
         for (let i = 0; i < vector.length; i++) {
-          const sign = vector[i] < 0 ? 1 : 0;
-          const logVal = Math.log(absValues[i]);
-          const quantizedVal = Math.round((logVal - minLog) * scale);
-          // Use highest bit for sign and remaining 7 bits for magnitude
-          quantized[i] = (sign << 7) | (quantizedVal & 0x7F);
+          const value = vector[i] || 0;
+          const absVal = Math.abs(value);
+          const sign = value >= 0 ? 0 : 128;
+          const logVal = absVal > 0 ? Math.log(absVal) / safeScale : 0;
+          safeQuantized[i] = sign | Math.round(logVal);
         }
         
-        params = { min: minLog, max: maxLog, scale, offset: 0 };
+        quantized = safeQuantized;
+        params = { 
+          min: 0,
+          max: 1,
+          scale: safeScale,
+          offset: 0
+        };
         break;
       }
-      
-      default:
-        // Default to minmax
-        return this.quantizeVector(vector, 'minmax');
     }
-    
+
+    if (!quantized) {
+      throw new Error('Quantization failed');
+    }
+
     return { quantized, params };
   }
   
@@ -539,32 +572,42 @@ export class OptimizedEmbeddingStorage {
    * Dequantize a vector from 8-bit integers back to floating point
    */
   private dequantizeVector(quantized: Uint8Array | Int8Array, params: QuantizationParams): number[] {
-    const { min, max, scale, offset } = params;
+    if (!quantized || !params) {
+      return [];
+    }
+
+    const { min = 0, max = 1, scale = 1, offset = 0 } = params;
     const result = new Array(quantized.length);
-    
+
     if (quantized instanceof Uint8Array) {
-      // Check if this is a logarithmic encoding by checking if min is very small
-      const isLog = Math.abs(min) < 1e-5 && scale > 1;
+      const isLog = typeof min === 'number' && typeof scale === 'number' && Math.abs(min) < 1e-5 && scale > 1;
       
       if (isLog) {
-        // This is likely logarithmic quantization
+        const safeMin = min;
+        const safeScale = scale > 0 ? scale : 1;
+        
         for (let i = 0; i < quantized.length; i++) {
-          const val = quantized[i];
+          const val = quantized[i] || 0;
           const sign = (val & 0x80) ? -1 : 1;
           const magnitude = val & 0x7F;
-          const logVal = (magnitude / scale) + min;
+          const logVal = (magnitude / safeScale) + safeMin;
           result[i] = sign * Math.exp(logVal);
         }
       } else {
-        // Standard minmax quantization
+        const safeScale = scale > 0 ? scale : 1;
+        const safeOffset = offset || 0;
+        
         for (let i = 0; i < quantized.length; i++) {
-          result[i] = (quantized[i] / scale) + offset;
+          const value = quantized[i] || 0;
+          result[i] = (value / safeScale) + safeOffset;
         }
       }
     } else {
-      // Int8Array (centered quantization)
+      const safeScale = scale > 0 ? scale : 1;
+      
       for (let i = 0; i < quantized.length; i++) {
-        result[i] = quantized[i] / scale;
+        const value = quantized[i] || 0;
+        result[i] = value / safeScale;
       }
     }
     
@@ -576,19 +619,31 @@ export class OptimizedEmbeddingStorage {
    * Optimized implementation for TypedArrays
    */
   private cosineSimilarity(vec1: Float32Array | Float64Array, vec2: Float32Array | Float64Array): number {
+    // Early return if either vector is undefined or null
+    if (!vec1 || !vec2) {
+      return 0;
+    }
+
+    // Defensive length check with proper type safety
     if (vec1.length !== vec2.length) {
       throw new Error('Vectors must have the same dimensions');
     }
     
+    // Pre-initialize accumulators for memory efficiency
     let dotProduct = 0;
     let norm1 = 0;
     let norm2 = 0;
     
-    // Single loop implementation for better performance
-    for (let i = 0; i < vec1.length; i++) {
-      dotProduct += vec1[i] * vec2[i];
-      norm1 += vec1[i] * vec1[i];
-      norm2 += vec2[i] * vec2[i];
+    // Single loop implementation for better performance with explicit type checks
+    const length = vec1.length;
+    for (let i = 0; i < length; i++) {
+      // Type-safe access with default values for memory optimization
+      const v1 = vec1[i] || 0;
+      const v2 = vec2[i] || 0;
+      
+      dotProduct += v1 * v2;
+      norm1 += v1 * v1;
+      norm2 += v2 * v2;
     }
     
     // Handle zero vectors

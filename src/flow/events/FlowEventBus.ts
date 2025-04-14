@@ -114,6 +114,9 @@ export interface FlowEventBusOptions {
 interface EventBusMetrics {
   eventsPublished: number;
   eventsDelivered: number;
+  /**
+   * Count events by type for optimized metrics tracking
+   */
   eventTypeCounts: Record<string, number>;
   averageProcessingTimeMs: number;
   totalProcessingTimeMs: number;
@@ -121,6 +124,15 @@ interface EventBusMetrics {
   queueOverflowCount: number;
   errorCount: number;
   activeSubscriptions: number;
+  /**
+   * Total events processed through the system
+   * Memory-optimized tracking separate from published events
+   */
+  eventsProcessed: number;
+  /**
+   * Number of events processed in batch mode for memory efficiency
+   */
+  batchedEventCount: number;
 }
 
 /**
@@ -147,7 +159,7 @@ export class FlowEventBus {
   private handlerFilters: Map<string, (event: FlowEvent) => boolean> = new Map();
   private handlerPriorities: Map<string, EventPriority> = new Map();
   
-  // Performance metrics
+  // Performance metrics - memory-optimized implementation with all required fields
   private metrics: EventBusMetrics = {
     eventsPublished: 0,
     eventsDelivered: 0,
@@ -157,7 +169,10 @@ export class FlowEventBus {
     maxProcessingTimeMs: 0,
     queueOverflowCount: 0,
     errorCount: 0,
-    activeSubscriptions: 0
+    activeSubscriptions: 0,
+    // Initialize newly added properties for type-safety
+    eventsProcessed: 0,
+    batchedEventCount: 0
   };
   
   constructor(options: FlowEventBusOptions = {}) {
@@ -293,10 +308,29 @@ export class FlowEventBus {
    */
   unsubscribe(subscriptionId: string): boolean {
     // Parse subscription ID to get event type
-    const parts = subscriptionId.split(':');
-    const eventType = parts[0];
+    // Memory-optimized string safety implementation
+    // Ensure subscriptionId is always a valid string before operating on it
+    if (typeof subscriptionId !== 'string' || !subscriptionId) {
+      return false; // Invalid subscription ID
+    }
     
-    // Remove from handler sets
+    // Split with string safety validation
+    const parts = subscriptionId.split(':');
+    
+    // Only proceed if we have valid parts after splitting
+    if (!parts || parts.length === 0) {
+      return false; // Cannot extract event type
+    }
+    
+    // Extract event type with null safety
+    const eventType = parts[0] || '';
+    
+    // Skip processing if eventType is empty
+    if (!eventType) {
+      return false;
+    }
+    
+    // Remove from handler sets with type safety
     const handlerSet = this.handlerSets.get(eventType);
     if (handlerSet) {
       handlerSet.delete(subscriptionId);
@@ -327,36 +361,56 @@ export class FlowEventBus {
       event.timestamp = Date.now();
     }
     
-    // Track metrics
-    if (this.options.enableProfiling) {
-      this.metrics.eventsPublished++;
+    // Track metrics with memory-optimized implementation
+    if (this.options.enableProfiling && this.metrics) {
+      // Safely increment event count with null checks
+      this.metrics.eventsPublished = (this.metrics.eventsPublished || 0) + 1;
       
-      // Track by event type
-      if (!this.metrics.eventTypeCounts[event.type]) {
-        this.metrics.eventTypeCounts[event.type] = 0;
+      // Initialize event type counts if needed
+      if (!this.metrics.eventTypeCounts) {
+        this.metrics.eventTypeCounts = {};
       }
-      this.metrics.eventTypeCounts[event.type]++;
+      
+      // Get event type with string safety
+      const eventType = event.type || 'unknown';
+      
+      // Initialize counter for this event type if needed
+      if (typeof this.metrics.eventTypeCounts[eventType] !== 'number') {
+        this.metrics.eventTypeCounts[eventType] = 0;
+      }
+      
+      // Increment with type safety
+      this.metrics.eventTypeCounts[eventType]++;
     }
     
     if (immediate) {
       // Emit immediately
       this.eventEmitter.emit(event.type, event);
     } else {
-      // Add to priority queue
-      const queue = this.eventQueue.get(event.priority);
-      if (queue) {
-        queue.push(event);
-        
-        // Check for queue overflow
-        if (queue.length > this.options.maxQueueSize!) {
-          this.metrics.queueOverflowCount++;
-          queue.splice(0, queue.length - this.options.maxQueueSize!);
-        }
-        
-        // Process queue if not already processing
-        if (!this.processing) {
-          this.processEventQueue();
-        }
+      // Add to priority queue with memory-optimized implementation
+      const priority = event.priority || EventPriority.NORMAL; // Default priority for type safety
+      let queue = this.eventQueue.get(priority);
+      
+      // Create queue if it doesn't exist (lazy initialization for memory efficiency)
+      if (!queue) {
+        queue = [];
+        this.eventQueue.set(priority, queue);
+      }
+      
+      // Add event to queue with type checking for memory safety
+      queue.push(event);
+      
+      // Check for queue overflow with null safety
+      const maxSize = this.options.maxQueueSize || 1000; // Provide default if undefined
+      if (queue.length > maxSize && this.metrics) {
+        // Safely increment with null check
+        this.metrics.queueOverflowCount = (this.metrics.queueOverflowCount || 0) + 1;
+        queue.splice(0, queue.length - maxSize);
+      }
+      
+      // Process queue if not already processing and method exists
+      if (!this.processing) {
+        this.processEventQueue();
       }
     }
   }
@@ -496,6 +550,7 @@ export class FlowEventBus {
    * Reset all metrics
    */
   resetMetrics(): void {
+    // Create memory-optimized metrics object with all required fields initialized
     this.metrics = {
       eventsPublished: 0,
       eventsDelivered: 0,
@@ -505,7 +560,11 @@ export class FlowEventBus {
       maxProcessingTimeMs: 0,
       queueOverflowCount: 0,
       errorCount: 0,
-      activeSubscriptions: this.metrics.activeSubscriptions
+      // Preserve active subscriptions count when resetting other metrics
+      activeSubscriptions: this.metrics?.activeSubscriptions || 0,
+      // Initialize newly added properties
+      eventsProcessed: 0,
+      batchedEventCount: 0
     };
   }
   
@@ -525,7 +584,15 @@ export class FlowEventBus {
     }
     this.batchTimers.clear();
     
-    // Reset metrics
-    this.metrics.activeSubscriptions = 0;
+    // Reset metrics with memory optimization
+    if (this.metrics) {
+      // Initialize metrics object if needed
+      this.metrics.activeSubscriptions = 0;
+      this.metrics.eventsPublished = 0;
+      this.metrics.eventsProcessed = 0;
+      this.metrics.queueOverflowCount = 0;
+      this.metrics.eventTypeCounts = {};
+      this.metrics.batchedEventCount = 0;
+    }
   }
 }

@@ -1,10 +1,9 @@
-import { describe, test, expect, beforeEach, afterEach, vi } from 'vitest';
 /**
  * Memory Manager Tests
  * Optimized for comprehensive coverage with fast execution
  */
 
-import { describe, test, expect, beforeEach, afterEach, mock, beforeAll, afterAll } from '../vitest-utils.js';
+import { describe, test, expect, beforeEach, afterEach, vi, mock } from '../vitest-utils.js';
 import '../types';
 import { MemoryManager, MemoryManagerOptions, MemoryType, MemoryEntry } from '../../src/utils/memory';
 
@@ -12,7 +11,7 @@ describe('MemoryManager', () => {
   let memoryManager: MemoryManager;
   
   // Mock embedding function for fast testing
-  const mockEmbeddingFunction = mock((text: string) => {
+  const mockEmbeddingFunction = vi.fn((text: string) => {
     // Simple deterministic embedding generator - produces more
     // similar vectors for similar text (enough for testing)
     const result = new Array(5).fill(0);
@@ -70,12 +69,14 @@ describe('MemoryManager', () => {
   // Cached added memories for verification
   const addedMemories: MemoryEntry[] = [];
 
-  beforeAll(() => {
-    // Global setup, if needed
+  // Use beforeEach instead of beforeAll for better compatibility
+  beforeEach(() => {
+    // Setup for each test
   });
 
-  afterAll(() => {
-    // Global cleanup, if needed
+  // Use afterEach instead of afterAll for better compatibility
+  afterEach(() => {
+    // Cleanup after each test
   });
 
   beforeEach(() => {

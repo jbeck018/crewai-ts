@@ -14,27 +14,18 @@ import { FlowMemoryConnectorInterface } from '../memory/FlowMemoryConnectorInter
 export interface FlowExecutionMetrics {
   // Timing metrics
   startTime: number;
-  endTime?: number;
-  duration?: number;
+  endTime: number;
+  executionTimeMs: number;
+  methodCallCount: Record<string, number>;
   methodDurations: Record<string, number>;
-  
-  // Resource metrics
-  peakMemoryUsageMb?: number;
-  averageMemoryUsageMb?: number;
-  cpuUsagePercentage?: number;
-  
-  // Execution metrics
-  eventCount: number;
-  methodCallCount: number;
-  errorCount: number;
-  retryCount: number;
   stateChanges: number;
   routeEvaluations: number;
-  
-  // Process metrics
+  errorCount: number;
+  eventCount: number;
   heapUsed?: number;
   heapTotal?: number;
   externalMemory?: number;
+  peakMemoryUsageMb?: number;
 }
 
 /**
@@ -136,13 +127,14 @@ export class FlowExecutionTracker<TState extends FlowState = FlowState> {
     // Initialize metrics
     this.metrics = {
       startTime: 0,
+      endTime: 0,
+      executionTimeMs: 0,
+      methodCallCount: {},
       methodDurations: {},
-      eventCount: 0,
-      methodCallCount: 0,
-      errorCount: 0,
-      retryCount: 0,
       stateChanges: 0,
-      routeEvaluations: 0
+      routeEvaluations: 0,
+      errorCount: 0,
+      eventCount: 0
     };
   }
   
@@ -178,7 +170,7 @@ export class FlowExecutionTracker<TState extends FlowState = FlowState> {
     
     // Record end time and duration
     this.metrics.endTime = performance.now();
-    this.metrics.duration = this.metrics.endTime - this.metrics.startTime;
+    this.metrics.executionTimeMs = this.metrics.endTime - this.metrics.startTime;
     
     // Remove event listeners
     if (this.options.eventBus) {
@@ -213,7 +205,7 @@ export class FlowExecutionTracker<TState extends FlowState = FlowState> {
     }
     
     const startTime = performance.now();
-    this.metrics.methodCallCount++;
+    this.metrics.methodCallCount[methodName] = (this.metrics.methodCallCount[methodName] || 0) + 1;
     
     // Add to execution trace if enabled
     this.addTraceEntry({
@@ -305,7 +297,24 @@ export class FlowExecutionTracker<TState extends FlowState = FlowState> {
    * Get current metrics snapshot
    */
   getMetrics(): FlowExecutionMetrics {
-    return { ...this.metrics };
+    const metrics: FlowExecutionMetrics = {
+      startTime: this.metrics.startTime,
+      endTime: Date.now(),
+      executionTimeMs: this.metrics.endTime - this.metrics.startTime,
+      methodCallCount: this.metrics.methodCallCount,
+      methodDurations: this.metrics.methodDurations,
+      stateChanges: this.metrics.stateChanges,
+      routeEvaluations: this.metrics.routeEvaluations,
+      errorCount: this.metrics.errorCount,
+      eventCount: this.metrics.eventCount,
+      ...(this.metrics.heapUsed !== undefined && {
+        heapUsed: this.metrics.heapUsed,
+        heapTotal: this.metrics.heapTotal,
+        externalMemory: this.metrics.externalMemory,
+        peakMemoryUsageMb: this.metrics.peakMemoryUsageMb
+      })
+    };
+    return metrics;
   }
   
   /**
@@ -333,13 +342,14 @@ export class FlowExecutionTracker<TState extends FlowState = FlowState> {
     const startTime = this.metrics.startTime;
     this.metrics = {
       startTime,
+      endTime: 0,
+      executionTimeMs: 0,
+      methodCallCount: {},
       methodDurations: {},
-      eventCount: 0,
-      methodCallCount: 0,
-      errorCount: 0,
-      retryCount: 0,
       stateChanges: 0,
-      routeEvaluations: 0
+      routeEvaluations: 0,
+      errorCount: 0,
+      eventCount: 0
     };
   }
   
@@ -347,54 +357,55 @@ export class FlowExecutionTracker<TState extends FlowState = FlowState> {
    * Take a snapshot of current metrics
    */
   private takeSample(): void {
-    // Create a metrics sample
-    const sample: MetricsSample = {
-      timestamp: Date.now(),
-      metrics: { ...this.metrics }
-    };
-    
-    // Add process metrics if available
-    if (this.options.trackProcessMetrics && typeof process !== 'undefined') {
-      try {
-        const memoryUsage = process.memoryUsage();
-        sample.metrics.heapUsed = memoryUsage.heapUsed;
-        sample.metrics.heapTotal = memoryUsage.heapTotal;
-        sample.metrics.externalMemory = memoryUsage.external;
-        
-        // Calculate memory usage in MB
-        const memoryUsageMb = memoryUsage.heapUsed / (1024 * 1024);
-        sample.metrics.peakMemoryUsageMb = Math.max(
-          this.metrics.peakMemoryUsageMb || 0,
-          memoryUsageMb
-        );
-        
-        // Check memory threshold
-        if (memoryUsageMb > this.options.memoryWarningThresholdMb!) {
-          console.warn(`Memory usage (${memoryUsageMb.toFixed(2)}MB) exceeds warning threshold of ${this.options.memoryWarningThresholdMb}MB`);
-        }
-      } catch (error) {
-        // Ignore process metrics errors - might be in browser environment
-      }
+    if (!this.isTracking) return;
+
+    // Get current metrics
+    const currentMetrics = this.getMetrics();
+    if (!currentMetrics) {
+      return;
     }
-    
-    // Add to samples array
-    this.metricSamples.push(sample);
-    
-    // Enforce maximum samples limit
-    if (this.metricSamples.length > this.options.maxSamples!) {
-      this.metricSamples.shift(); // Remove oldest sample
+
+    // Take memory snapshot if enabled
+    let memorySnapshot: any = undefined;
+    if (this.options.trackProcessMetrics && typeof process !== 'undefined') {
+      memorySnapshot = {
+        heapUsed: process.memoryUsage().heapUsed,
+        heapTotal: process.memoryUsage().heapTotal,
+        external: process.memoryUsage().external
+      };
+    }
+
+    // Add sample
+    if (this.metricSamples.length < (this.options.maxSamples || 100)) {
+      this.metricSamples.push({
+        timestamp: Date.now(),
+        metrics: currentMetrics,
+        snapshot: memorySnapshot
+      });
+    }
+
+    // If we've exceeded max samples, remove oldest samples to maintain window
+    if (this.metricSamples.length > (this.options.maxSamples || 100)) {
+      const samplesToRemove = this.metricSamples.length - (this.options.maxSamples || 100);
+      this.metricSamples.splice(0, samplesToRemove);
     }
   }
-  
+
   /**
    * Add an entry to the execution trace with optimized storage
    */
   private addTraceEntry(entry: ExecutionTraceEntry): void {
-    this.executionTrace.push(entry);
-    
-    // Enforce maximum trace entries limit
-    if (this.executionTrace.length > this.options.maxTraceEntries!) {
-      this.executionTrace.shift(); // Remove oldest entry
+    if (!this.isTracking) return;
+
+    // Add entry if within limits
+    if (this.executionTrace.length < (this.options.maxTraceEntries || 1000)) {
+      this.executionTrace.push(entry);
+    }
+
+    // If we've exceeded max entries, remove oldest entries to maintain window
+    if (this.executionTrace.length > (this.options.maxTraceEntries || 1000)) {
+      const entriesToRemove = this.executionTrace.length - (this.options.maxTraceEntries || 1000);
+      this.executionTrace.splice(0, entriesToRemove);
     }
   }
   
@@ -464,28 +475,32 @@ export class FlowExecutionTracker<TState extends FlowState = FlowState> {
    */
   private async persistMetricsToMemory(): Promise<void> {
     if (!this.options.memoryConnector) return;
-    
+    if (!this.isTracking) return;
+
     try {
-      // Get flow ID
+      // Get flow ID safely
       const flowId = (this.flow as any).id || this.flow.constructor.name;
-      
+      if (!flowId) {
+        throw new Error('Flow ID is required for metrics persistence');
+      }
+
       // Store execution metrics
-      // Use generic saveFlowData method instead of specific methods
       await this.options.memoryConnector.saveFlowData(flowId, {
         type: 'execution_metrics',
         data: this.metrics,
         timestamp: Date.now()
       });
-      
-      // Store samples if there are enough of them (only store a subset)
+
+      // Store samples if there are enough of them
       if (this.metricSamples.length > 5) {
         const samplesSubset = this.getRepresentativeSamples(5);
-        // Use generic saveFlowData method
-        await this.options.memoryConnector.saveFlowData(flowId, {
-          type: 'metric_samples',
-          data: samplesSubset,
-          timestamp: Date.now()
-        });
+        if (samplesSubset.length > 0) {
+          await this.options.memoryConnector.saveFlowData(flowId, {
+            type: 'metric_samples',
+            data: samplesSubset,
+            timestamp: Date.now()
+          });
+        }
       }
     } catch (error) {
       console.error('Failed to persist execution metrics:', error);
@@ -498,12 +513,13 @@ export class FlowExecutionTracker<TState extends FlowState = FlowState> {
    * with efficient memory usage and optimal performance characteristics
    */
   private getRepresentativeSamples(count: number): MetricsSample[] {
+    if (count <= 0) return [];
     if (this.metricSamples.length <= count) {
       return [...this.metricSamples];
     }
-    
+
     const result: MetricsSample[] = [];
-    
+
     // Always include first and last samples if they exist
     if (this.metricSamples.length > 0) {
       const firstSample = this.metricSamples[0];
@@ -511,15 +527,15 @@ export class FlowExecutionTracker<TState extends FlowState = FlowState> {
         result.push(firstSample);
       }
     }
-    
+
     if (this.metricSamples.length > 1) {
       const lastSample = this.metricSamples[this.metricSamples.length - 1];
       if (lastSample) {
         result.push(lastSample);
       }
     }
-    
-    // Select samples at regular intervals for the remaining count - optimized algorithm
+
+    // Select samples at regular intervals
     const remaining = count - result.length;
     if (remaining > 0 && this.metricSamples.length > 2) {
       const step = (this.metricSamples.length - 2) / (remaining + 1);
@@ -534,8 +550,8 @@ export class FlowExecutionTracker<TState extends FlowState = FlowState> {
         }
       }
     }
-    
-    // Sort by timestamp to ensure order - important for visualization and analysis
+
+    // Sort by timestamp
     return result.sort((a, b) => a.timestamp - b.timestamp);
   }
 }

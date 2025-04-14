@@ -38,7 +38,7 @@ async function ensureDirectoryExists(filePath: string, create: boolean): Promise
   const dirname = path.dirname(filePath);
   
   try {
-    const stats = await fs.stat(dirname).catch(() => null);
+    const stats = await fs.stat(dirname).catch((): null => null);
     
     // Directory exists
     if (stats && stats.isDirectory()) {

@@ -6,11 +6,22 @@
  */
 
 import { EmbedderConfig } from '../types.js';
+import LRUCache from 'lru-cache';
 
 /**
  * Base Embedder Options
  */
-export interface BaseEmbedderOptions extends EmbedderConfig {
+export interface BaseEmbedderOptions {
+  /**
+   * Model to use for embeddings
+   */
+  model?: string;
+
+  /**
+   * Provider of the embedding service
+   */
+  provider?: string;
+
   /**
    * Cache size for embeddings (number of items)
    * @default 1000
@@ -34,6 +45,44 @@ export interface BaseEmbedderOptions extends EmbedderConfig {
    * @default 4
    */
   maxConcurrency?: number;
+
+  /**
+   * API key for provider-specific authentication
+   */
+  apiKey?: string;
+
+  /**
+   * API URL for HuggingFace
+   */
+  apiUrl?: string;
+
+  /**
+   * Whether to use local inference
+   */
+  useLocal?: boolean;
+
+  /**
+   * Local model path
+   */
+  localModelPath?: string;
+
+  /**
+   * Maximum sequence length
+   * @default 512
+   */
+  maxLength?: number;
+
+  /**
+   * Whether to use average pooling
+   * @default true
+   */
+  useAveragePooling?: boolean;
+
+  /**
+   * Request timeout in milliseconds
+   * @default 30000
+   */
+  timeout?: number;
 
   /**
    * Retry configuration
@@ -63,10 +112,26 @@ export interface BaseEmbedderOptions extends EmbedderConfig {
    * @default false
    */
   debug?: boolean;
+
+  /**
+   * Embedding function to use
+   */
+  embeddingFunction?: (text: string) => Promise<Float32Array>;
+
+  /**
+   * Whether to normalize the embeddings
+   * @default false
+   */
+  normalize?: boolean;
+
+  /**
+   * Dimensions of the embeddings
+   */
+  dimensions?: number;
 }
 
 /**
- * Cache Entry for embeddings
+ * Cache entry interface
  */
 interface CacheEntry {
   embedding: Float32Array;
@@ -77,318 +142,250 @@ interface CacheEntry {
  * Abstract base class for all embedders
  * Implements common functionality with optimized performance
  */
-export abstract class BaseEmbedder {
-  /**
-   * Configuration options for the embedder
-   */
-  protected options: Required<BaseEmbedderOptions>;
+export abstract class BaseEmbedder<T extends BaseEmbedderOptions = BaseEmbedderOptions> {
+  protected client: any;
+  protected _model: string;
+  protected retryOptions: Required<{
+    maxRetries: number;
+    initialBackoff: number;
+    maxBackoff: number;
+  }>;
+  protected cache: Map<string, Float32Array> = new Map();
 
-  /**
-   * In-memory LRU cache for embeddings
-   */
-  protected cache: Map<string, CacheEntry>;
-
-  /**
-   * Constructor for BaseEmbedder
-   * @param options Embedder configuration options
-   */
-  constructor(options: BaseEmbedderOptions = {}) {
-    // Set defaults optimized for performance and memory usage
-    this.options = {
-      model: options.model || 'all-MiniLM-L6-v2',
-      dimensions: options.dimensions || 384,
-      normalize: options.normalize !== undefined ? options.normalize : true,
-      provider: options.provider || 'openai',
-      embeddingFunction: options.embeddingFunction,
-      cacheSize: options.cacheSize || 1000,
-      cacheTTL: options.cacheTTL || 3600000, // 1 hour default
-      batchSize: options.batchSize || 16,
-      maxConcurrency: options.maxConcurrency || 4,
-      retry: {
-        maxRetries: options.retry?.maxRetries || 3,
-        initialBackoff: options.retry?.initialBackoff || 1000,
-        maxBackoff: options.retry?.maxBackoff || 30000
-      },
-      debug: options.debug || false
+  constructor(public readonly options: T) {
+    const defaultRetry = {
+      maxRetries: 3,
+      initialBackoff: 1000,
+      maxBackoff: 30000
     };
 
-    // Initialize cache
-    this.cache = new Map<string, CacheEntry>();
+    this.options = {
+      ...options,
+      model: options.model || 'text-embedding-3-small',
+      provider: options.provider || 'unknown',
+      retry: options.retry || defaultRetry,
+      debug: options.debug ?? false,
+      dimensions: options.dimensions ?? 768,
+      cacheSize: options.cacheSize ?? 1000,
+      cacheTTL: options.cacheTTL ?? 3600000,
+      batchSize: options.batchSize ?? 16,
+      maxConcurrency: options.maxConcurrency ?? 4,
+      apiKey: options.apiKey ?? '',
+      apiUrl: options.apiUrl ?? '',
+      useLocal: options.useLocal ?? false,
+      localModelPath: options.localModelPath ?? '',
+      maxLength: options.maxLength ?? 512,
+      useAveragePooling: options.useAveragePooling ?? true,
+      timeout: options.timeout ?? 30000,
+      embeddingFunction: options.embeddingFunction || ((text: string) => Promise.resolve(new Float32Array(this.options.dimensions!))),
+      normalize: options.normalize ?? false
+    };
+
+    this._model = this.options.model || 'text-embedding-3-small';
+    this.retryOptions = this.options.retry as Required<{
+      maxRetries: number;
+      initialBackoff: number;
+      maxBackoff: number;
+    }>;
   }
 
-  /**
-   * Generate embeddings for a single text
-   * @param text Text to embed
-   * @returns Promise resolving to Float32Array of embeddings
-   */
-  async embed(text: string): Promise<Float32Array> {
-    if (!text || text.trim() === '') {
-      if (this.options.debug) {
-        console.warn('Empty text provided for embedding, returning zero vector');
-      }
-      return new Float32Array(this.options.dimensions);
-    }
+  public abstract embed(text: string): Promise<Float32Array>;
 
-    // Check cache first
-    const cacheKey = this.generateCacheKey(text);
-    const cachedItem = this.getCachedEmbedding(cacheKey);
-    
-    if (cachedItem) {
-      return cachedItem;
-    }
+  public abstract embedBatch(texts: string[]): Promise<Float32Array[]>;
 
-    try {
-      // Get embedding from implementation
-      const embedding = await this.embedText(text);
-      
-      // Cache result
-      this.cacheEmbedding(cacheKey, embedding);
-      
-      return embedding;
-    } catch (error) {
-      if (this.options.debug) {
-        console.error('Error generating embedding:', error);
-      }
-      throw error;
-    }
-  }
+  protected async executeWithRetry<T>(
+    operation: () => Promise<T>,
+    maxRetries: number = this.retryOptions.maxRetries,
+    initialBackoff: number = this.retryOptions.initialBackoff,
+    maxBackoff: number = this.retryOptions.maxBackoff
+  ): Promise<T> {
+    let currentBackoff = initialBackoff;
+    let lastError: Error | null = null;
 
-  /**
-   * Generate embeddings for multiple texts with efficient batching
-   * @param texts Array of texts to embed
-   * @returns Promise resolving to array of Float32Array embeddings
-   */
-  async embedBatch(texts: string[]): Promise<Float32Array[]> {
-    // Filter empty texts
-    const validTexts = texts.filter(text => text && text.trim() !== '');
-    
-    if (validTexts.length === 0) {
-      if (this.options.debug) {
-        console.warn('No valid texts provided for batch embedding');
-      }
-      return [];
-    }
-
-    // Check cache for all texts first
-    const cacheResults: (Float32Array | null)[] = validTexts.map(text => {
-      const cacheKey = this.generateCacheKey(text);
-      return this.getCachedEmbedding(cacheKey);
-    });
-
-    // If all results are cached, return them
-    if (cacheResults.every(result => result !== null)) {
-      return cacheResults as Float32Array[];
-    }
-
-    // Find texts that need embedding
-    const textsToEmbed: { text: string; index: number }[] = validTexts
-      .map((text, index) => ({ text, index }))
-      .filter((item, index) => cacheResults[index] === null);
-
-    // Create optimal batches
-    const batches = this.createBatches(
-      textsToEmbed,
-      this.options.batchSize
-    );
-
-    // Process batches with controlled concurrency
-    const batchResults: { index: number; embedding: Float32Array }[] = [];
-
-    try {
-      // Process batch in sequence for API rate limit compliance
-      for (const batch of batches) {
-        const batchPromises = batch.map(async item => {
-          try {
-            const embedding = await this.embedText(item.text);
-            // Cache the result
-            this.cacheEmbedding(this.generateCacheKey(item.text), embedding);
-            return { index: item.index, embedding };
-          } catch (error) {
-            if (this.options.debug) {
-              console.error(`Error embedding text at index ${item.index}:`, error);
-            }
-            // Return zero vector for failed embeddings
-            return {
-              index: item.index,
-              embedding: new Float32Array(this.options.dimensions)
-            };
+    for (let attempt = 0; attempt < maxRetries; attempt++) {
+      try {
+        return await operation();
+      } catch (error) {
+        lastError = error instanceof Error ? error : new Error(String(error));
+        
+        if (this.isTransientError(lastError)) {
+          if (attempt === maxRetries - 1) {
+            throw lastError;
           }
-        });
-
-        // Wait for all embeddings in this batch
-        const results = await Promise.all(batchPromises);
-        batchResults.push(...results);
-      }
-
-      // Combine cached and new results
-      const combinedResults: Float32Array[] = new Array(validTexts.length);
-      
-      // Add cached results
-      cacheResults.forEach((result, index) => {
-        if (result !== null) {
-          combinedResults[index] = result;
+          
+          await new Promise(resolve => setTimeout(resolve, currentBackoff));
+          currentBackoff = Math.min(currentBackoff * 2, maxBackoff);
+        } else {
+          throw lastError;
         }
-      });
-      
-      // Add new results
-      batchResults.forEach(result => {
-        combinedResults[result.index] = result.embedding;
-      });
-
-      return combinedResults;
-    } catch (error) {
-      if (this.options.debug) {
-        console.error('Error in batch embedding:', error);
       }
-      throw error;
     }
+    
+    throw lastError || new Error('Unknown error during operation');
   }
 
-  /**
-   * Abstract method to be implemented by provider-specific embedders
-   * @param text Text to embed
-   * @returns Promise resolving to embedding vectors
-   */
-  protected abstract embedText(text: string): Promise<Float32Array>;
-
-  /**
-   * Generate a deterministic cache key for a text
-   * @param text Text to generate key for
-   * @returns Cache key
-   */
-  protected generateCacheKey(text: string): string {
-    // Simple hash function for cache key
-    const normalizedText = text.trim().toLowerCase();
-    
-    // Fast string hashing algorithm (djb2)
-    let hash = 5381;
-    for (let i = 0; i < normalizedText.length; i++) {
-      hash = ((hash << 5) + hash) + normalizedText.charCodeAt(i);
-    }
-    
-    return `${this.options.provider}:${this.options.model}:${hash}`;
+  protected async executeBatchWithRetry<T>(
+    operation: () => Promise<T>,
+    maxRetries: number = this.retryOptions.maxRetries,
+    initialBackoff: number = this.retryOptions.initialBackoff,
+    maxBackoff: number = this.retryOptions.maxBackoff
+  ): Promise<T> {
+    return await this.executeWithRetry(operation, maxRetries, initialBackoff, maxBackoff);
   }
 
-  /**
-   * Get a cached embedding
-   * @param cacheKey Cache key
-   * @returns Cached embedding or null if not found
-   */
-  protected getCachedEmbedding(cacheKey: string): Float32Array | null {
-    const cachedItem = this.cache.get(cacheKey);
+  protected isTransientError(error: Error): boolean {
+    const message = error.message.toLowerCase();
     
-    if (!cachedItem) {
-      return null;
-    }
-    
-    // Check if cache entry has expired
-    if (Date.now() - cachedItem.timestamp > this.options.cacheTTL) {
-      this.cache.delete(cacheKey);
-      return null;
-    }
-    
-    return cachedItem.embedding;
+    return (
+      // Network errors
+      message.includes('etimedout') || 
+      message.includes('econnreset') || 
+      message.includes('econnrefused') ||
+      message.includes('network error') ||
+      message.includes('aborted') ||
+      message.includes('timeout') ||
+      // Rate limiting and server errors
+      message.includes('rate limit') || 
+      message.includes('too many requests') ||
+      message.includes('429') ||
+      message.includes('500') ||
+      message.includes('503')
+    );
   }
 
-  /**
-   * Cache an embedding
-   * @param cacheKey Cache key
-   * @param embedding Embedding to cache
-   */
-  protected cacheEmbedding(cacheKey: string, embedding: Float32Array): void {
-    // Manage cache size before adding new item
-    if (this.cache.size >= this.options.cacheSize) {
-      this.evictCacheItems();
+  protected normalizeVector(vector: Float32Array): Float32Array {
+    if (!vector || vector.length === 0) {
+      throw new Error('Vector is required and must have at least one element');
     }
-    
-    this.cache.set(cacheKey, {
-      embedding,
-      timestamp: Date.now()
-    });
-  }
 
-  /**
-   * Evict items from cache using LRU policy
-   */
-  protected evictCacheItems(): void {
-    // Evict 20% of cache entries (LRU strategy)
-    const entriesToRemove = Math.ceil(this.options.cacheSize * 0.2);
-    
-    if (entriesToRemove <= 0) {
-      return;
-    }
-    
-    // Sort by timestamp (oldest first)
-    const entries = Array.from(this.cache.entries())
-      .sort((a, b) => a[1].timestamp - b[1].timestamp);
-    
-    // Remove oldest entries
-    for (let i = 0; i < Math.min(entriesToRemove, entries.length); i++) {
-      this.cache.delete(entries[i][0]);
-    }
-  }
-
-  /**
-   * Create batches for parallel processing with controlled concurrency
-   * @param items Array of items to process
-   * @param batchSize Maximum batch size
-   * @returns Array of batches
-   */
-  protected createBatches<T>(items: T[], batchSize: number): T[][] {
-    const batches: T[][] = [];
-    for (let i = 0; i < items.length; i += batchSize) {
-      batches.push(items.slice(i, i + batchSize));
-    }
-    return batches;
-  }
-
-  /**
-   * Normalize a vector to unit length
-   * @param vector Vector to normalize
-   * @returns Normalized vector
-   */
-  protected normalizeVector(vector: number[] | Float32Array): Float32Array {
-    // Convert to Float32Array if needed
-    const float32Vector = Array.isArray(vector) 
-      ? new Float32Array(vector)
-      : vector;
-    
-    if (float32Vector.length === 0) {
-      return new Float32Array(this.options.dimensions);
-    }
-    
-    // Calculate magnitude
     let magnitude = 0;
-    for (let i = 0; i < float32Vector.length; i++) {
-      magnitude += float32Vector[i] * float32Vector[i];
+    for (let i = 0; i < vector.length; i++) {
+      const value = vector[i];
+      if (value === undefined) {
+        throw new Error('Vector contains undefined values');
+      }
+      magnitude += value * value;
     }
     magnitude = Math.sqrt(magnitude);
-    
-    // Avoid division by zero
+
     if (magnitude === 0) {
-      return float32Vector;
+      return vector;
     }
-    
-    // Normalize in-place for better performance
-    for (let i = 0; i < float32Vector.length; i++) {
-      float32Vector[i] /= magnitude;
+
+    const normalized = new Float32Array(vector.length);
+    for (let i = 0; i < vector.length; i++) {
+      const value = vector[i];
+      if (value === undefined) {
+        throw new Error('Vector contains undefined values');
+      }
+      normalized[i] = value / magnitude;
     }
-    
-    return float32Vector;
+
+    return normalized;
   }
 
-  /**
-   * Clear the embedding cache
-   */
   public clearCache(): void {
     this.cache.clear();
   }
 
-  /**
-   * Get the current cache size
-   * @returns Number of items in cache
-   */
   public getCacheSize(): number {
     return this.cache.size;
+  }
+
+  protected generateCacheKey(text: string): string {
+    if (!text) {
+      throw new Error('Text is required for cache key generation');
+    }
+    return `${this._model}-${text}`;
+  }
+
+  protected async embedText(text: string): Promise<Float32Array> {
+    if (!text) {
+      if (this.options.debug) {
+        console.warn('Empty text provided for embedding, returning zero vector');
+      }
+      return new Float32Array(this.options.dimensions!);
+    }
+
+    const cacheKey = this.generateCacheKey(text);
+    const cached = this.getCachedEmbedding(cacheKey);
+    if (cached) {
+      return cached;
+    }
+
+    try {
+      const embedding = await this.embed(text);
+      if (!embedding) {
+        throw new Error('Embedding function returned undefined');
+      }
+      // Ensure embedding is Float32Array
+      const embeddingArray = embedding instanceof Float32Array ? embedding : new Float32Array(embedding);
+      this.cache.set(cacheKey, embeddingArray);
+      return embeddingArray;
+    } catch (error) {
+      console.error(`Embedding failed:`, error);
+      return new Float32Array(this.options.dimensions!);
+    }
+  }
+
+  protected async embedTexts(texts: string[]): Promise<Float32Array[]> {
+    if (!texts?.length) {
+      return [];
+    }
+
+    const batchSize = this.options.batchSize!;
+    const numBatches = Math.ceil(texts.length / batchSize);
+    const results: Float32Array[] = [];
+
+    for (let i = 0; i < numBatches; i++) {
+      const batch = texts.slice(i * batchSize, (i + 1) * batchSize);
+      try {
+        const embeddings = await this.embedBatch(batch);
+        if (!embeddings) {
+          throw new Error('EmbedBatch returned undefined');
+        }
+        results.push(...embeddings);
+      } catch (error) {
+        console.error(`Batch embedding failed:`, error);
+        const zeroVector = new Float32Array(this.options.dimensions!);
+        results.push(...Array(batch.length).fill(zeroVector));
+      }
+    }
+
+    return results;
+  }
+
+  protected getCachedEmbedding(cacheKey: string): Float32Array | null {
+    if (!cacheKey) {
+      return null;
+    }
+
+    const cachedItem = this.cache.get(cacheKey);
+    if (!cachedItem) {
+      return null;
+    }
+
+    return cachedItem;
+  }
+
+  protected async batchProcess<T>(
+    items: string[],
+    batchSize: number,
+    processFn: (batch: string[]) => Promise<T[]>
+  ): Promise<T[]> {
+    if (!items?.length) {
+      return [];
+    }
+
+    const results: T[] = [];
+    const numBatches = Math.ceil(items.length / batchSize);
+
+    for (let i = 0; i < numBatches; i++) {
+      const batch = items.slice(i * batchSize, (i + 1) * batchSize);
+      const batchResults = await processFn(batch);
+      results.push(...batchResults);
+    }
+
+    return results;
   }
 }

@@ -7,38 +7,85 @@
  */
 
 import { EventEmitter } from 'events';
-import type { Flow, FlowId } from '../types.js';
+import type { FlowId } from '../types.js';
 import { FlowExecutionTracker } from './FlowExecutionTracker.js';
 
-// Optimized data structures for scheduling
-export interface SchedulableFlow {
-  id: FlowId;
-  flow: Flow<any>;
-  priority: number;
-  state: 'pending' | 'ready' | 'running' | 'completed' | 'failed' | 'cancelled';
-  dependencies: Set<FlowId>;
-  dependents: Set<FlowId>;
-  estimatedResourceUsage: ResourceEstimate;
-  startTime?: number;
-  endTime?: number;
-  attempt: number;
-  executionTime?: number;
-  readyTime?: number;
-  timeInQueue?: number;
+declare global {
+  namespace NodeJS {
+    interface Process {
+      cpuUsage(): { user: number; system: number; };
+    }
+  }
 }
 
+// Optimized data structures for scheduling
 interface ResourceEstimate {
-  cpu: number; // 0-1 scale representing percentage of CPU core
-  memory: number; // Estimated memory in MB
-  io: number; // 0-1 scale representing IO intensity
-  network: number; // 0-1 scale representing network utilization
+  cpu: number;
+  memory: number;
+  io: number;
+  network: number;
+}
+
+interface ResourceUsage extends ResourceEstimate {
+  availableCpu: number;
+  availableMemory: number;
+  maxConcurrentIo: number;
+  maxConcurrentNetwork: number;
+}
+
+interface ResourceLimits {
+  availableCpu: number;
+  availableMemory: number;
+  maxConcurrentIo: number;
+  maxConcurrentNetwork: number;
 }
 
 interface SystemResources {
-  availableCpu: number; // Available CPU units (1.0 = one core)
-  availableMemory: number; // Available memory in MB
-  maxConcurrentIo: number; // Maximum concurrent IO operations
-  maxConcurrentNetwork: number; // Maximum concurrent network operations
+  availableCpu: number;
+  availableMemory: number;
+  maxConcurrentIo: number;
+  maxConcurrentNetwork: number;
+}
+
+interface FlowSchedulerMetrics {
+  averageFlowExecutionTime: number;
+  maxFlowExecutionTime: number;
+  minFlowExecutionTime: number;
+  completedFlows: number;
+  failedFlows: number;
+}
+
+interface FlowExecutionMetrics {
+  startTime: number;
+  endTime: number;
+  executionTime: number;
+  duration: number;
+  resourceUsage?: ResourceUsage;
+  error?: Error;
+}
+
+interface Flow<T> {
+  execute(): Promise<T>;
+  id: string;
+}
+
+interface SchedulableFlow {
+  id: string;
+  flow: any;
+  resourceUsage?: ResourceUsage;
+  estimatedResourceUsage?: ResourceEstimate;
+  metrics?: FlowExecutionMetrics;
+  state: string;
+  readyTime?: number;
+  timeInQueue?: number;
+  priority: number;
+  dependencies: Set<string>;
+  dependents: Set<string>;
+  attempt: number;
+  errors: Error[];
+  startTime?: number;
+  endTime?: number;
+  executionTime?: number;
 }
 
 export interface SchedulerOptions {
@@ -47,7 +94,7 @@ export interface SchedulerOptions {
   /** Whether to optimize for speed or memory */
   optimizeFor?: 'speed' | 'memory' | 'balanced';
   /** Resource limits for scheduling */
-  resourceLimits?: Partial<SystemResources>;
+  resourceLimits?: Partial<ResourceLimits>;
   /** Enable predictive scheduling based on flow history */
   enablePredictiveScheduling?: boolean;
   /** Window size for adaptive scheduling algorithms */
@@ -66,253 +113,209 @@ export interface SchedulerOptions {
   enableBackpressure?: boolean;
 }
 
-/**
- * FlowScheduler is responsible for determining the optimal execution order
- * of flows based on dependencies, priorities, and resource constraints.
- * It implements various performance optimizations to ensure efficient
- * flow execution in a multi-flow environment.
- */
+export interface FlowSchedulerOptions extends SchedulerOptions {
+  tracker?: FlowExecutionTracker;
+}
+
 export class FlowScheduler extends EventEmitter {
   private readyQueue: SchedulableFlow[] = [];
-  private pendingFlows: Map<FlowId, SchedulableFlow> = new Map();
-  private runningFlows: Map<FlowId, SchedulableFlow> = new Map();
-  private completedFlows: Map<FlowId, SchedulableFlow> = new Map();
-  private flowMap: Map<FlowId, SchedulableFlow> = new Map();
-  private resourceUsage: SystemResources;
+  private pendingFlows: Map<string, SchedulableFlow> = new Map();
+  private runningFlows: Map<string, SchedulableFlow> = new Map();
+  private completedFlows: Map<string, SchedulableFlow> = new Map();
+  private failedFlows: Map<string, SchedulableFlow> = new Map();
+  private flowMap: Map<string, SchedulableFlow> = new Map();
+  private resourceUsage!: ResourceUsage;
   private timer?: NodeJS.Timeout;
-  private tracker?: FlowExecutionTracker;
-  
+  private tracker: FlowExecutionTracker;
+  private metrics!: {
+    averageFlowExecutionTime: number;
+    maxFlowExecutionTime: number;
+    minFlowExecutionTime: number;
+    completedFlows: number;
+    failedFlows: number;
+  };
+  private logger: Console = console;
+
   // Performance optimization: pre-computed dependency resolution maps
-  private flowsBlockedBy: Map<FlowId, Set<FlowId>> = new Map();
-  private flowsBlocking: Map<FlowId, Set<FlowId>> = new Map();
-  
+  private flowsBlockedBy: Map<string, Set<string>> = new Map();
+  private flowsBlocking: Map<string, Set<string>> = new Map();
+
   // Performance history for predictive scheduling
   private flowExecutionHistory: Map<string, number[]> = new Map(); // flowType -> execution times
   private lastScheduleTime: number = 0;
-  
+
   // Priority queue indexing for O(log n) operations
   private priorityChanged: boolean = false;
-  
-  private options: Required<SchedulerOptions>;
-  
-  constructor(options: SchedulerOptions = {}, tracker?: FlowExecutionTracker) {
+
+  private options: Required<FlowSchedulerOptions>;
+
+  constructor(options: FlowSchedulerOptions = {}, tracker?: FlowExecutionTracker) {
     super();
-    
+
     // Default options optimized for performance
-    this.options = {
-      maxConcurrency: 4,
+    const defaultOptions: Required<FlowSchedulerOptions> = {
+      maxConcurrency: 10,
       optimizeFor: 'balanced',
       resourceLimits: {
-        availableCpu: navigator?.hardwareConcurrency || 4,
-        availableMemory: 1024, // 1GB default
+        availableCpu: navigator?.hardwareConcurrency ?? 4,
+        availableMemory: 1024,
         maxConcurrentIo: 10,
         maxConcurrentNetwork: 10
       },
       enablePredictiveScheduling: true,
-      adaptiveWindowSize: 10,
-      defaultPriority: 5,
+      adaptiveWindowSize: 5,
+      defaultPriority: 0,
       enableWorkStealing: true,
-      maxQueueTime: 30000, // 30 seconds
-      priorityBoostAmount: 2,
-      scheduleInterval: 100, // 100ms
+      maxQueueTime: 60000,
+      priorityBoostAmount: 10,
+      scheduleInterval: 1000,
       enableBackpressure: true,
-      ...options
+      tracker: tracker || new FlowExecutionTracker()
     };
-    
-    // Initialize resource tracking
-    this.resourceUsage = {
-      availableCpu: this.options.resourceLimits.availableCpu || 4,
-      availableMemory: this.options.resourceLimits.availableMemory || 1024,
-      maxConcurrentIo: this.options.resourceLimits.maxConcurrentIo || 10,
-      maxConcurrentNetwork: this.options.resourceLimits.maxConcurrentNetwork || 10
-    };
-    
-    // Link tracker if provided
-    this.tracker = tracker;
+
+    this.options = { ...defaultOptions, ...options };
+    this.tracker = this.options.tracker;
+
+    // Initialize resources and metrics
+    this.initializeResources();
+    this.initializeMetrics();
+
+    // Initialize collections
+    this.readyQueue = [];
+    this.pendingFlows = new Map<string, SchedulableFlow>();
+    this.runningFlows = new Map<string, SchedulableFlow>();
   }
-  
+
+  private initializeResources(): void {
+    this.resourceUsage = {
+      cpu: 0,
+      memory: 0,
+      io: 0,
+      network: 0,
+      availableCpu: this.options.resourceLimits.availableCpu ?? 4,
+      availableMemory: this.options.resourceLimits.availableMemory ?? 1024,
+      maxConcurrentIo: this.options.resourceLimits.maxConcurrentIo ?? 10,
+      maxConcurrentNetwork: this.options.resourceLimits.maxConcurrentNetwork ?? 10
+    };
+  }
+
+  private initializeMetrics(): void {
+    this.metrics = {
+      averageFlowExecutionTime: 0,
+      maxFlowExecutionTime: 0,
+      minFlowExecutionTime: Infinity,
+      completedFlows: 0,
+      failedFlows: 0
+    };
+  }
+
   /**
    * Register a flow with the scheduler
    */
   registerFlow(
-    id: FlowId, 
+    id: string, 
     flow: Flow<any>, 
     options: {
       priority?: number;
-      dependencies?: FlowId[];
+      dependencies?: string[];
       resourceEstimate?: Partial<ResourceEstimate>;
     } = {}
   ): void {
-    const { priority = this.options.defaultPriority, dependencies = [], resourceEstimate = {} } = options;
-    
-    // Create optimized schedulable flow object
-    const schedulableFlow: SchedulableFlow = {
+    const flowData: SchedulableFlow = {
       id,
       flow,
-      priority,
+      priority: options.priority || this.options.defaultPriority,
       state: 'pending',
-      dependencies: new Set(dependencies),
+      dependencies: new Set(options.dependencies || []),
       dependents: new Set(),
       estimatedResourceUsage: {
-        cpu: resourceEstimate.cpu || 0.1, // Default to 10% of a core
-        memory: resourceEstimate.memory || 50, // Default to 50MB
-        io: resourceEstimate.io || 0.1,
-        network: resourceEstimate.network || 0.1
+        cpu: options.resourceEstimate?.cpu ?? 0.1,
+        memory: options.resourceEstimate?.memory ?? 10,
+        io: options.resourceEstimate?.io ?? 0.1,
+        network: options.resourceEstimate?.network ?? 0.1
       },
-      attempt: 0
+      attempt: 0,
+      executionTime: undefined,
+      errors: []
     };
-    
-    // Store in maps for O(1) lookups
-    this.pendingFlows.set(id, schedulableFlow);
-    this.flowMap.set(id, schedulableFlow);
-    
-    // Initialize dependency tracking for efficient topological scheduling
-    this.flowsBlockedBy.set(id, new Set(dependencies));
-    this.flowsBlocking.set(id, new Set());
-    
-    // Register flow type for predictive scheduling
-    if (this.options.enablePredictiveScheduling) {
-      const flowType = flow.constructor.name;
-      if (!this.flowExecutionHistory.has(flowType)) {
-        this.flowExecutionHistory.set(flowType, []);
-      }
+
+    this.flowMap.set(id, flowData);
+    this.pendingFlows.set(id, flowData);
+
+    // Update dependency maps
+    for (const dep of flowData.dependencies) {
+      const blockers = this.flowsBlocking.get(dep) || new Set();
+      blockers.add(id);
+      this.flowsBlocking.set(dep, blockers);
+
+      const blockedBy = this.flowsBlockedBy.get(id) || new Set();
+      blockedBy.add(dep);
+      this.flowsBlockedBy.set(id, blockedBy);
     }
-    
-    // Log registration with tracker
+
+    // Update tracker if available
     if (this.tracker) {
-      this.tracker.registerFlow(id, { flowType: flow.constructor.name }, priority);
+      this.tracker.registerFlow(id);
     }
-    
-    // Check if this flow is a dependency for any existing flows
-    for (const [existingId, existingFlow] of this.flowMap.entries()) {
-      if (existingFlow.dependencies.has(id)) {
-        // This new flow blocks the existing flow
-        const blockedBy = this.flowsBlockedBy.get(existingId);
-        if (blockedBy) {
-          blockedBy.add(id);
-        }
-        
-        // Update the blocking relationship
-        const blocking = this.flowsBlocking.get(id);
-        if (blocking) {
-          blocking.add(existingId);
-          schedulableFlow.dependents.add(existingId);
-        }
-      }
-    }
-    
-    // Update dependency graph in tracker
-    if (this.tracker) {
-      for (const depId of dependencies) {
-        this.tracker.addDependency(id, depId);
-      }
-    }
-    
-    // Emit event
-    this.emit('flow_registered', { id, priority });
-    
-    // Re-evaluate ready flows
-    this.updateReadyFlows();
+
+    this.emit('flow_registered', { id, priority: flowData.priority });
   }
-  
+
   /**
    * Add a dependency between flows
    */
-  addDependency(dependentId: FlowId, dependencyId: FlowId): void {
+  addDependency(dependentId: string, dependencyId: string): void {
     const dependent = this.flowMap.get(dependentId);
     const dependency = this.flowMap.get(dependencyId);
-    
+
     if (!dependent || !dependency) {
-      throw new Error(`Cannot add dependency: one or both flows not found`);
+      throw new Error('Flow not registered');
     }
-    
-    // Check for cycles
+
     if (this.wouldCreateCycle(dependentId, dependencyId)) {
-      throw new Error(`Adding dependency from ${dependencyId} to ${dependentId} would create a cycle`);
+      throw new Error('Dependency would create cycle');
     }
-    
-    // Update dependency sets with optimized data structures
+
     dependent.dependencies.add(dependencyId);
     dependency.dependents.add(dependentId);
-    
-    // Update blocked-by and blocking maps
+
+    // Update dependency maps
+    const blockers = this.flowsBlocking.get(dependencyId) || new Set();
+    blockers.add(dependentId);
+    this.flowsBlocking.set(dependencyId, blockers);
+
     const blockedBy = this.flowsBlockedBy.get(dependentId) || new Set();
     blockedBy.add(dependencyId);
     this.flowsBlockedBy.set(dependentId, blockedBy);
-    
-    const blocking = this.flowsBlocking.get(dependencyId) || new Set();
-    blocking.add(dependentId);
-    this.flowsBlocking.set(dependencyId, blocking);
-    
-    // Update tracker
+
+    // Update tracker if available
     if (this.tracker) {
       this.tracker.addDependency(dependentId, dependencyId);
     }
-    
-    // Re-evaluate ready queue
-    if (dependent.state === 'ready') {
-      // Flow was ready but now has a new dependency
-      dependent.state = 'pending';
-      this.readyQueue = this.readyQueue.filter(f => f.id !== dependentId);
-      this.pendingFlows.set(dependentId, dependent);
-    }
-    
-    this.updateReadyFlows();
+
+    this.emit('dependency_added', { dependentId, dependencyId });
   }
-  
-  /**
-   * Check if adding a dependency would create a cycle
-   * Using optimized DFS with visited sets
-   */
-  private wouldCreateCycle(from: FlowId, to: FlowId): boolean {
-    const visited = new Set<FlowId>();
-    const stack = [to]; // Start from the dependency
-    
-    while (stack.length > 0) {
-      const current = stack.pop()!;
-      
-      if (current === from) {
-        return true; // Would create a cycle
-      }
-      
-      if (visited.has(current)) {
-        continue;
-      }
-      
-      visited.add(current);
-      
-      // Add all dependents to the stack
-      const dependents = this.flowsBlocking.get(current);
-      if (dependents) {
-        for (const dependent of dependents) {
-          stack.push(dependent);
-        }
-      }
-    }
-    
-    return false;
-  }
-  
+
   /**
    * Start scheduling flows
    */
   start(): void {
     this.lastScheduleTime = performance.now();
-    
+
     // Initial update of ready flows
     this.updateReadyFlows();
-    
+
     // Set up periodic scheduling
     if (this.options.scheduleInterval > 0) {
       this.timer = setInterval(() => {
         this.scheduleFlows();
       }, this.options.scheduleInterval);
     }
-    
+
     // Immediate first scheduling
     this.scheduleFlows();
   }
-  
+
   /**
    * Stop scheduling flows
    */
@@ -322,7 +325,7 @@ export class FlowScheduler extends EventEmitter {
       this.timer = undefined;
     }
   }
-  
+
   /**
    * Reset the scheduler to initial state
    */
@@ -332,21 +335,32 @@ export class FlowScheduler extends EventEmitter {
     this.pendingFlows.clear();
     this.runningFlows.clear();
     this.completedFlows.clear();
+    this.failedFlows.clear();
     this.flowMap.clear();
     this.flowsBlockedBy.clear();
     this.flowsBlocking.clear();
-    
+
     // Reset resource usage
-    this.resourceUsage = {
-      availableCpu: this.options.resourceLimits.availableCpu || 4,
-      availableMemory: this.options.resourceLimits.availableMemory || 1024,
-      maxConcurrentIo: this.options.resourceLimits.maxConcurrentIo || 10,
-      maxConcurrentNetwork: this.options.resourceLimits.maxConcurrentNetwork || 10
-    };
-    
+    this.resetResources();
+
     this.emit('scheduler_reset');
   }
-  
+
+  private resetResources(): void {
+    const limits = this.options.resourceLimits;
+    this.resourceUsage = {
+      cpu: 0,
+      memory: 0,
+      io: 0,
+      network: 0,
+      availableCpu: limits?.availableCpu ?? 4,
+      availableMemory: limits?.availableMemory ?? 1024,
+      maxConcurrentIo: limits?.maxConcurrentIo ?? 10,
+      maxConcurrentNetwork: limits?.maxConcurrentNetwork ?? 10
+    };
+    this.emit('scheduler_reset');
+  }
+
   /**
    * Update the set of flows that are ready to run
    * Uses optimized dependency checking
@@ -356,7 +370,7 @@ export class FlowScheduler extends EventEmitter {
     for (const [id, flow] of this.pendingFlows.entries()) {
       // Get flows blocking this one with O(1) lookup
       const blockers = this.flowsBlockedBy.get(id);
-      
+
       // Flow is ready if it has no blockers or all blockers are completed
       if (!blockers || blockers.size === 0 || 
           Array.from(blockers).every(blockerId => {
@@ -366,48 +380,47 @@ export class FlowScheduler extends EventEmitter {
         // Move from pending to ready
         flow.state = 'ready';
         flow.readyTime = performance.now();
-        this.readyQueue.push(flow);
-        this.pendingFlows.delete(id);
+        this.addFlowToReadyQueue(flow);
       }
     }
-    
+
     // Sort ready queue if needed
     if (this.readyQueue.length > 1) {
       this.sortReadyQueue();
     }
   }
-  
+
   /**
    * Sort the ready queue based on priority and other factors
    * Uses optimized sorting algorithm
    */
   private sortReadyQueue(): void {
     const now = performance.now();
-    
+
     // Apply priority boosts based on queue time
     if (this.options.maxQueueTime > 0) {
       for (const flow of this.readyQueue) {
         if (flow.readyTime && now - flow.readyTime > this.options.maxQueueTime) {
           // Calculate time in queue
           flow.timeInQueue = now - flow.readyTime;
-          
+
           // Apply priority boost to prevent starvation
           const boostFactor = Math.floor(flow.timeInQueue / this.options.maxQueueTime);
           const boost = boostFactor * this.options.priorityBoostAmount;
-          
+
           // Apply boost (up to a maximum reasonable value)
           flow.priority = Math.min(flow.priority + boost, 100);
         }
       }
     }
-    
+
     // Sort by multiple factors for optimal scheduling
     this.readyQueue.sort((a, b) => {
       // Priority is the primary factor (higher values first)
       if (a.priority !== b.priority) {
         return b.priority - a.priority;
       }
-      
+
       // If priorities are equal, use predicted execution time (shorter first)
       if (this.options.enablePredictiveScheduling) {
         const aTime = this.predictExecutionTime(a);
@@ -416,101 +429,101 @@ export class FlowScheduler extends EventEmitter {
           return aTime - bTime; // Shorter first
         }
       }
-      
+
       // If still tied, use resource efficiency (higher efficiency first)
       const aEfficiency = this.calculateResourceEfficiency(a);
       const bEfficiency = this.calculateResourceEfficiency(b);
       if (aEfficiency !== bEfficiency) {
         return bEfficiency - aEfficiency;
       }
-      
+
       // Finally, use readiness time (earlier first)
       return (a.readyTime || 0) - (b.readyTime || 0);
     });
   }
-  
+
+  /**
+   * Add flow to ready queue
+   */
+  private addFlowToReadyQueue(flow: SchedulableFlow): void {
+    flow.state = 'pending';
+    flow.readyTime = performance.now();
+    this.readyQueue.push(flow);
+    this.readyQueue.sort((a, b) => b.priority - a.priority);
+  }
+
+  /**
+   * Mark flow as ready
+   */
+  private markFlowAsReady(flow: SchedulableFlow): void {
+    flow.state = 'pending';
+    flow.readyTime = performance.now();
+    this.addFlowToReadyQueue(flow);
+  }
+
   /**
    * Calculate resource efficiency score for a flow
    * Higher is better
    */
   private calculateResourceEfficiency(flow: SchedulableFlow): number {
-    const { cpu, memory, io, network } = flow.estimatedResourceUsage;
-    
-    // Define resource weights based on current bottlenecks
-    const cpuWeight = this.resourceUsage.availableCpu < 1 ? 3 : 1;
-    const memoryWeight = this.resourceUsage.availableMemory < 100 ? 3 : 1;
-    const ioWeight = this.resourceUsage.maxConcurrentIo < 2 ? 3 : 1;
-    const networkWeight = this.resourceUsage.maxConcurrentNetwork < 2 ? 3 : 1;
-    
-    // Calculate inverse resource usage (lower usage = higher efficiency)
-    const cpuEfficiency = (1 - cpu) * cpuWeight;
-    const memoryEfficiency = (1 - (memory / 1000)) * memoryWeight;
-    const ioEfficiency = (1 - io) * ioWeight;
-    const networkEfficiency = (1 - network) * networkWeight;
-    
-    // Total efficiency score
-    return cpuEfficiency + memoryEfficiency + ioEfficiency + networkEfficiency;
+    const usage = flow.estimatedResourceUsage || {
+      cpu: 0,
+      memory: 0,
+      io: 0,
+      network: 0
+    };
+    const { availableCpu, availableMemory, maxConcurrentIo, maxConcurrentNetwork } = this.resourceUsage;
+
+    // Calculate resource utilization percentage
+    const cpuUtil = usage.cpu / availableCpu;
+    const memUtil = usage.memory / availableMemory;
+    const ioUtil = usage.io / maxConcurrentIo;
+    const netUtil = usage.network / maxConcurrentNetwork;
+
+    // Calculate efficiency as 1 - max utilization
+    return 1 - Math.max(cpuUtil, memUtil, ioUtil, netUtil);
   }
-  
+
   /**
    * Predict execution time for a flow based on historical data
    * Returns estimate in milliseconds
    */
   private predictExecutionTime(flow: SchedulableFlow): number {
-    if (!this.options.enablePredictiveScheduling) {
-      return 0; // Prediction disabled
-    }
-    
-    const flowType = flow.flow.constructor.name;
-    const history = this.flowExecutionHistory.get(flowType);
-    
-    if (!history || history.length === 0) {
-      // No history, use heuristic estimate based on dependency count
-      return 100 + (flow.dependencies.size * 50);
-    }
-    
-    // Use recent window for adaptive prediction
-    const recentHistory = history.slice(-this.options.adaptiveWindowSize);
-    
-    if (recentHistory.length === 0) {
-      return 100; // Fallback default
-    }
-    
-    // Calculate average with outlier rejection
-    if (recentHistory.length >= 4) {
-      // Remove outliers for more stable predictions
-      const sorted = [...recentHistory].sort((a, b) => a - b);
-      const q1Index = Math.floor(sorted.length / 4);
-      const q3Index = Math.floor(sorted.length * 3 / 4);
-      const validTimes = sorted.slice(q1Index, q3Index + 1);
-      
-      // Calculate average of non-outlier values
-      const sum = validTimes.reduce((acc, time) => acc + time, 0);
-      return sum / validTimes.length;
-    }
-    
-    // Simple average for small sample sizes
-    const sum = recentHistory.reduce((acc, time) => acc + time, 0);
-    return sum / recentHistory.length;
+    // Use default values if resource estimates are not provided
+    const resourceEstimate = flow.estimatedResourceUsage || {
+      cpu: 1,
+      memory: 10,
+      io: 1,
+      network: 1
+    };
+
+    // Simple linear model based on resource estimates
+    // CPU time + Memory time + IO time + Network time
+    return (
+      resourceEstimate.cpu * 1000 + // CPU time in ms (assuming 1 core = 1000ms)
+      resourceEstimate.memory * 0.1 + // Memory time (1MB = 0.1ms)
+      resourceEstimate.io * 10 + // IO time (1 operation = 10ms)
+      resourceEstimate.network * 50 // Network time (1 operation = 50ms)
+    );
   }
-  
+
   /**
    * Schedule flows for execution based on resources and priorities
    */
   private scheduleFlows(): void {
     const now = performance.now();
     this.lastScheduleTime = now;
-    
+
     // Check for completed running flows
     for (const [id, flow] of this.runningFlows.entries()) {
       // If flow is actually done (external signal), mark as completed
       if (flow.state === 'completed' || flow.state === 'failed') {
         this.runningFlows.delete(id);
         this.completedFlows.set(id, flow);
-        
+
         // Release resources
-        this.releaseResources(flow);
-        
+        this.updateResourceUsage(flow, false);
+
         // Record execution time for predictive scheduling
         if (flow.startTime && flow.endTime && this.options.enablePredictiveScheduling) {
           const executionTime = flow.endTime - flow.startTime;
@@ -524,53 +537,54 @@ export class FlowScheduler extends EventEmitter {
             }
           }
         }
-        
+
         // Update dependents
         this.updateDependentFlows(id);
       }
     }
-    
+
     // Update ready flows before scheduling
     this.updateReadyFlows();
-    
+
     // Schedule flows until we hit resource limits or no more ready flows
     while (this.readyQueue.length > 0) {
       // Check if we've hit concurrency limit
       if (this.runningFlows.size >= this.options.maxConcurrency) {
         break;
       }
-      
+
       // Check if we should apply backpressure
       if (this.options.enableBackpressure && this.isSystemOverloaded()) {
         break;
       }
-      
+
       // Get highest priority flow
       const flow = this.readyQueue.shift();
       if (!flow) break;
-      
+
       // Check if resources are available
-      if (!this.canAllocateResources(flow)) {
+      if (!this.canScheduleFlow(flow)) {
         // Put back at head of queue for next scheduling cycle
         this.readyQueue.unshift(flow);
         break;
       }
-      
+
       // Allocate resources and execute
-      this.allocateResources(flow);
+      this.updateResourceUsage(flow, true);
       this.executeFlow(flow);
     }
-    
+
     // Emit stats event
     this.emit('scheduler_stats', {
       pendingCount: this.pendingFlows.size,
       readyCount: this.readyQueue.length,
       runningCount: this.runningFlows.size,
       completedCount: this.completedFlows.size,
+      totalFlows: this.flowMap.size,
       resourceUsage: { ...this.resourceUsage }
     });
   }
-  
+
   /**
    * Check if the system is overloaded and should apply backpressure
    */
@@ -578,141 +592,161 @@ export class FlowScheduler extends EventEmitter {
     // Simple overload detection
     const cpuPercentage = 1 - (this.resourceUsage.availableCpu / 
       (this.options.resourceLimits.availableCpu || 4));
-      
+
     const memoryPercentage = 1 - (this.resourceUsage.availableMemory / 
       (this.options.resourceLimits.availableMemory || 1024));
-    
+
     // System is overloaded if either CPU or memory usage is above 90%
     return cpuPercentage > 0.9 || memoryPercentage > 0.9;
   }
-  
+
   /**
    * Execute a flow
    */
-  private executeFlow(flow: SchedulableFlow): void {
-    flow.state = 'running';
-    flow.startTime = performance.now();
-    flow.attempt++;
-    
-    this.runningFlows.set(flow.id, flow);
-    
-    // Notify tracker
-    if (this.tracker) {
-      this.tracker.startFlowExecution(flow.id);
+  private async executeFlow(flow: SchedulableFlow): Promise<void> {
+    const startTime = Date.now();
+    try {
+      await flow.flow.execute();
+      const duration = Date.now() - startTime;
+      this.metrics = {
+        ...this.metrics,
+        averageFlowExecutionTime: (this.metrics.averageFlowExecutionTime * this.metrics.completedFlows + duration) / (this.metrics.completedFlows + 1),
+        maxFlowExecutionTime: Math.max(this.metrics.maxFlowExecutionTime, duration),
+        minFlowExecutionTime: Math.min(this.metrics.minFlowExecutionTime, duration),
+        completedFlows: this.metrics.completedFlows + 1
+      };
+      this.markFlowCompleted(flow.id, true);
+      this.updateDependentFlows(flow.id);
+    } catch (error) {
+      this.metrics = {
+        ...this.metrics,
+        failedFlows: this.metrics.failedFlows + 1
+      };
+      this.markFlowCompleted(flow.id, false);
+      throw error;
     }
-    
-    this.emit('flow_started', { id: flow.id, attempt: flow.attempt });
   }
-  
-  /**
-   * Mark a flow as completed
-   */
-  markFlowCompleted(flowId: FlowId, success: boolean, result?: any): void {
-    const flow = this.flowMap.get(flowId);
+
+  private markFlowCompleted(flowId: string, success: boolean): void {
+    const flow = this.runningFlows.get(flowId);
     if (!flow) return;
-    
-    flow.state = success ? 'completed' : 'failed';
-    flow.endTime = performance.now();
-    
-    if (flow.startTime) {
-      flow.executionTime = flow.endTime - flow.startTime;
-    }
-    
-    // Update tracker
+
     if (this.tracker) {
-      this.tracker.completeFlowExecution(flowId, success, result);
+      const metrics = flow.metrics || {
+        startTime: flow.startTime || 0,
+        endTime: Date.now(),
+        executionTime: 0,
+        duration: 0,
+        resourceUsage: flow.resourceUsage
+      };
+      
+      if (success) {
+        this.tracker.completeFlow(flowId, metrics);
+      } else {
+        // Pass the error object if it exists
+        const error = metrics.error;
+        if (error) {
+          this.tracker.failFlow(flowId, error);
+        } else {
+          this.tracker.failFlow(flowId, new Error('Flow execution failed'));
+        }
+      }
     }
-    
-    this.emit('flow_completed', { 
-      id: flowId, 
-      success, 
-      executionTime: flow.executionTime 
-    });
-    
-    // The running flow will be cleaned up in the next scheduling cycle
+
+    if (success) {
+      this.completedFlows.set(flowId, flow);
+    } else {
+      this.failedFlows.set(flowId, flow);
+    }
+    this.runningFlows.delete(flowId);
+    this.emit(success ? 'flow_completed' : 'flow_failed', { flowId });
   }
-  
+
   /**
-   * Update dependent flows when a flow completes
+   * Update the set of flows that are dependent on a given flow
    */
-  private updateDependentFlows(flowId: FlowId): void {
+  private updateDependentFlows(flowId: string): void {
     const dependents = this.flowsBlocking.get(flowId);
     if (!dependents) return;
-    
+
     for (const dependentId of dependents) {
       const blockers = this.flowsBlockedBy.get(dependentId);
       if (blockers) {
         blockers.delete(flowId);
-        
-        // If no more blockers, this flow might be ready now
-        if (blockers.size === 0) {
-          const dependent = this.flowMap.get(dependentId);
-          if (dependent && dependent.state === 'pending') {
-            dependent.state = 'ready';
-            dependent.readyTime = performance.now();
-            this.readyQueue.push(dependent);
-            this.pendingFlows.delete(dependentId);
-            
-            // Re-sort the ready queue
-            this.sortReadyQueue();
-          }
+        const dependent = this.flowMap.get(dependentId);
+        if (dependent && blockers.size === 0) {
+          dependent.state = 'ready';
+          dependent.readyTime = performance.now();
+          this.addFlowToReadyQueue(dependent);
+          this.sortReadyQueue();
         }
       }
     }
   }
-  
+
   /**
-   * Check if resources can be allocated for a flow
+   * Check if adding a dependency would create a cycle
+   * Using optimized DFS with visited sets
    */
-  private canAllocateResources(flow: SchedulableFlow): boolean {
-    const { cpu, memory, io, network } = flow.estimatedResourceUsage;
-    
-    return (
-      this.resourceUsage.availableCpu >= cpu &&
-      this.resourceUsage.availableMemory >= memory &&
-      this.resourceUsage.maxConcurrentIo >= io &&
-      this.resourceUsage.maxConcurrentNetwork >= network
-    );
+  private wouldCreateCycle(from: string, to: string): boolean {
+    const visited = new Set<string>();
+    const stack = [to]; // Start from the dependency
+
+    while (stack.length > 0) {
+      const current = stack.pop()!;
+
+      if (current === from) {
+        return true; // Would create a cycle
+      }
+
+      if (visited.has(current)) {
+        continue;
+      }
+
+      visited.add(current);
+
+      // Add all dependents to the stack
+      const dependents = this.flowsBlocking.get(current);
+      if (dependents) {
+        for (const dependent of dependents) {
+          stack.push(dependent);
+        }
+      }
+    }
+
+    return false;
   }
-  
+
   /**
-   * Allocate resources for a flow
+   * Start flow execution
    */
-  private allocateResources(flow: SchedulableFlow): void {
-    const { cpu, memory, io, network } = flow.estimatedResourceUsage;
-    
-    this.resourceUsage.availableCpu -= cpu;
-    this.resourceUsage.availableMemory -= memory;
-    this.resourceUsage.maxConcurrentIo -= io;
-    this.resourceUsage.maxConcurrentNetwork -= network;
+  startFlowExecution(flowId: string): void {
+    const flow = this.flowMap.get(flowId);
+    if (!flow) {
+      throw new Error('Flow not found');
+    }
+
+    if (flow.state !== 'ready') {
+      throw new Error('Flow not ready to start');
+    }
+
+    this.executeFlow(flow);
   }
-  
-  /**
-   * Release resources allocated to a flow
-   */
-  private releaseResources(flow: SchedulableFlow): void {
-    const { cpu, memory, io, network } = flow.estimatedResourceUsage;
-    
-    this.resourceUsage.availableCpu += cpu;
-    this.resourceUsage.availableMemory += memory;
-    this.resourceUsage.maxConcurrentIo += io;
-    this.resourceUsage.maxConcurrentNetwork += network;
-  }
-  
+
   /**
    * Get all scheduled flows
    */
-  getFlows(): Map<FlowId, SchedulableFlow> {
+  getFlows(): Map<string, SchedulableFlow> {
     return new Map(this.flowMap);
   }
-  
+
   /**
    * Get a flow by ID
    */
-  getFlow(flowId: FlowId): SchedulableFlow | undefined {
+  getFlow(flowId: string): SchedulableFlow | undefined {
     return this.flowMap.get(flowId);
   }
-  
+
   /**
    * Get current scheduler stats
    */
@@ -725,5 +759,153 @@ export class FlowScheduler extends EventEmitter {
       totalFlows: this.flowMap.size,
       resourceUsage: { ...this.resourceUsage }
     };
+  }
+
+  private updateResourceUsage(flow: SchedulableFlow, isStarting: boolean): void {
+    const resourceUsage = flow.resourceUsage || flow.estimatedResourceUsage;
+    if (!resourceUsage) return;
+
+    // Create a safe copy of the resource usage with default values
+    const safeUsage: ResourceEstimate = {
+      cpu: resourceUsage.cpu ?? 0,
+      memory: resourceUsage.memory ?? 0,
+      io: resourceUsage.io ?? 0,
+      network: resourceUsage.network ?? 0
+    };
+
+    if (!this.resourceUsage) {
+      this.resourceUsage = {
+        cpu: 0,
+        memory: 0,
+        io: 0,
+        network: 0,
+        availableCpu: 4,
+        availableMemory: 1024,
+        maxConcurrentIo: 10,
+        maxConcurrentNetwork: 10
+      };
+    }
+
+    if (isStarting) {
+      this.resourceUsage.cpu = (this.resourceUsage.cpu ?? 0) + safeUsage.cpu;
+      this.resourceUsage.memory = (this.resourceUsage.memory ?? 0) + safeUsage.memory;
+      this.resourceUsage.io = (this.resourceUsage.io ?? 0) + safeUsage.io;
+      this.resourceUsage.network = (this.resourceUsage.network ?? 0) + safeUsage.network;
+    } else {
+      this.resourceUsage.cpu = Math.max(0, (this.resourceUsage.cpu ?? 0) - safeUsage.cpu);
+      this.resourceUsage.memory = Math.max(0, (this.resourceUsage.memory ?? 0) - safeUsage.memory);
+      this.resourceUsage.io = Math.max(0, (this.resourceUsage.io ?? 0) - safeUsage.io);
+      this.resourceUsage.network = Math.max(0, (this.resourceUsage.network ?? 0) - safeUsage.network);
+    }
+  }
+
+  private handleFlowError(flowId: string, error: Error | number): void {
+    const flow = this.runningFlows.get(flowId);
+    if (!flow) return;
+
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    this.logger.error(`Flow execution failed: ${errorMessage}`);
+    
+    // Update flow metrics with error information
+    if (flow.metrics) {
+      flow.metrics.error = error instanceof Error ? error : new Error(errorMessage);
+    }
+    
+    this.markFlowCompleted(flowId, false);
+  }
+
+  private canScheduleFlow(flow: SchedulableFlow): boolean {
+    if (!this.resourceUsage) {
+      return false;
+    }
+
+    const usage = this.calculateResourceUsage(flow);
+    return (
+      (this.resourceUsage.availableCpu || 0) >= usage.cpu &&
+      (this.resourceUsage.availableMemory || 0) >= usage.memory &&
+      (this.resourceUsage.maxConcurrentIo || 0) >= usage.io &&
+      (this.resourceUsage.maxConcurrentNetwork || 0) >= usage.network
+    );
+  }
+
+  private calculateResourceUsage(flow: SchedulableFlow): ResourceEstimate {
+    const usage = flow.resourceUsage || flow.estimatedResourceUsage;
+    return usage || {
+      cpu: 0,
+      memory: 0,
+      io: 0,
+      network: 0
+    };
+  }
+
+  private getResourceUsage(): ResourceUsage {
+    if (!this.resourceUsage) {
+      this.resourceUsage = {
+        cpu: 0,
+        memory: 0,
+        io: 0,
+        network: 0,
+        availableCpu: 4,
+        availableMemory: 1024,
+        maxConcurrentIo: 10,
+        maxConcurrentNetwork: 10
+      };
+    }
+
+    const memoryUsage = process.memoryUsage();
+    return {
+      cpu: 0,
+      memory: memoryUsage ? memoryUsage.heapUsed / 1024 / 1024 : 0,
+      io: 0,
+      network: 0,
+      availableCpu: this.resourceUsage.availableCpu || 4,
+      availableMemory: this.resourceUsage.availableMemory || 1024,
+      maxConcurrentIo: this.resourceUsage.maxConcurrentIo || 10,
+      maxConcurrentNetwork: this.resourceUsage.maxConcurrentNetwork || 10
+    };
+  }
+
+  private scheduleFlow(flowId: string): void {
+    const flow = this.getFlow(flowId);
+    if (!flow) return;
+
+    if (!this.resourceUsage) {
+      this.initializeResources();
+    }
+
+    if (this.canScheduleFlow(flow)) {
+      this.updateResourceUsage(flow, true);
+      this.runningFlows.set(flowId, flow);
+      this.executeFlow(flow);
+    } else {
+      this.pendingFlows.set(flowId, flow);
+    }
+  }
+
+  private updateFlowMetrics(flowId: string): void {
+    const flow = this.getFlow(flowId);
+    if (!flow?.metrics) return;
+
+    const now = performance.now();
+    flow.metrics.executionTime = now - (flow.metrics.startTime || now);
+    flow.metrics.duration = flow.metrics.executionTime;
+  }
+
+  private getFlowMetrics(flowId: string): FlowExecutionMetrics | null {
+    const flow = this.getFlow(flowId);
+    return flow?.metrics || null;
+  }
+
+  private getFlowExecutionTime(flowId: string): number {
+    const metrics = this.getFlowMetrics(flowId);
+    if (!metrics || !metrics.startTime || !metrics.endTime) {
+      return 0;
+    }
+    return metrics.endTime - metrics.startTime;
+  }
+
+  private getFlowResourceUsage(flowId: string): ResourceUsage | null {
+    const metrics = this.getFlowMetrics(flowId);
+    return metrics?.resourceUsage || null;
   }
 }

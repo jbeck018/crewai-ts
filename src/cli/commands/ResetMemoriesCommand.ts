@@ -1,8 +1,29 @@
 /**
  * CLI command for resetting various types of memory storages.
  * Optimized for targeted memory management and efficient cleanup.
+ * Memory-optimized with strong type safety.
  */
 import { Command } from '../Command.js';
+
+// Define proper interfaces for memory optimization and type safety
+interface MemoryStorage {
+  clear(): Promise<void>;
+}
+
+// Interface for knowledge storage with more flexible operations
+interface KnowledgeStorageOperations {
+  // Base directory for storage
+  baseDir?: string;
+  
+  // Optional methods that might be available
+  clear?: () => Promise<void>;
+  deleteAll?: () => Promise<void>;
+  delete?: (key: string) => Promise<boolean>;
+  list?: () => Promise<string[]>;
+}
+
+// Type-safe options map for memory configuration
+type MemoryTypeKey = 'long' | 'short' | 'entities' | 'knowledge' | 'kickoffOutputs' | 'all';
 
 export class ResetMemoriesCommand extends Command {
   readonly name = 'reset-memories';
@@ -74,8 +95,67 @@ export class ResetMemoriesCommand extends Command {
       if (parsedArgs.knowledge) {
         spinner.text = 'Resetting knowledge memory...';
         const { KnowledgeStorage } = await import('../../knowledge/storage/KnowledgeStorage.js');
+        
+        // Create storage with optimized memory footprint
         const knowledgeStorage = new KnowledgeStorage();
-        resetPromises.push(knowledgeStorage.clear());
+        
+        // Type assertion for memory efficiency - we'll do a single cast instead of multiple property checks
+        type ExtendedKnowledgeStorage = {
+          baseDir?: string;
+          clear?: () => Promise<void>;
+          deleteAll?: () => Promise<void>;
+          delete?: (key: string) => Promise<boolean>;
+          list?: () => Promise<string[]>;
+        };
+        
+        // Create a single type-safe reference to prevent multiple castings
+        const safeStorage = knowledgeStorage as unknown as ExtendedKnowledgeStorage;
+        
+        // Implement a memory-efficient approach to clearing knowledge storage
+        try {
+          // Create an optimized clear function that adapts to available methods
+          const clearStorage = async () => {
+            // Feature detection pattern for memory-efficient operation
+            if (typeof safeStorage.clear === 'function') {
+              // If clear method exists, use it directly (preferred approach)
+              await safeStorage.clear();
+            } else if (typeof safeStorage.deleteAll === 'function') {
+              // Second option: use deleteAll if available
+              await safeStorage.deleteAll();
+            } else if (typeof safeStorage.delete === 'function' && typeof safeStorage.list === 'function') {
+              // Third option: list all keys and delete individually
+              const keys = await safeStorage.list();
+              if (Array.isArray(keys)) {
+                // Process deletions in batches to optimize memory usage
+                const batchSize = 100;
+                for (let i = 0; i < keys.length; i += batchSize) {
+                  const batch = keys.slice(i, i + batchSize);
+                  await Promise.all(batch.map(key => safeStorage.delete!(key)));
+                }
+              }
+            } else {
+              console.warn('Knowledge storage does not support any clear operations - using filesystem fallback');
+              // Last resort: try to clear via filesystem operations
+              const fs = await import('fs/promises');
+              const path = await import('path');
+              const baseDir = safeStorage.baseDir || './knowledge';
+              
+              try {
+                await fs.rm(baseDir, { recursive: true, force: true });
+                await fs.mkdir(baseDir, { recursive: true });
+                console.log(`Recreated knowledge directory at ${baseDir}`);
+              } catch (fsError) {
+                console.warn(`Could not clear knowledge directory: ${(fsError as Error).message}`);
+              }
+            }
+          };
+          
+          // Execute the appropriate clear operation
+          resetPromises.push(clearStorage());
+        } catch (error) {
+          console.warn(`Error clearing knowledge storage: ${(error as Error).message}`);
+          resetPromises.push(Promise.resolve()); // Continue with other operations
+        }
       }
       
       if (parsedArgs.kickoffOutputs) {
@@ -131,8 +211,8 @@ export class ResetMemoriesCommand extends Command {
     for (let i = 0; i < args.length; i++) {
       const arg = args[i];
       
-      // Use efficient Map-based lookup for option handling
-      const optionMap: Record<string, keyof typeof result> = {
+      // Use efficient Map-based lookup for option handling with memory optimization
+      const optionMap: Record<string, MemoryTypeKey> = {
         '--long': 'long',
         '-l': 'long',
         '--short': 'short',
@@ -148,10 +228,11 @@ export class ResetMemoriesCommand extends Command {
         '-a': 'all'
       };
       
-      // Set the appropriate flag if it matches an option
-      const option = optionMap[arg];
-      if (option) {
-        result[option] = true;
+      // Set the appropriate flag if it matches an option with type safety
+      const option = arg ? optionMap[arg] : undefined;
+      if (option && option in result) {
+        // Use type assertion with verification to ensure type safety
+        result[option as keyof typeof result] = true;
       }
     }
 

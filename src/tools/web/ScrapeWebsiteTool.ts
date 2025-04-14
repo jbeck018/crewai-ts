@@ -96,7 +96,12 @@ async function defaultScraper(input: ScrapeWebsiteInput): Promise<ScrapeWebsiteR
           const matches = [];
           let match;
           while ((match = regex.exec(html)) !== null) {
-            matches.push(match[1]);
+            // Add memory-optimized type guard for array access
+            const matchContent = match[1];
+            // Ensure the content is a valid string before adding to matches
+            if (typeof matchContent === 'string') {
+              matches.push(matchContent);
+            }
           }
           content = matches.join('\n');
         } else {
@@ -227,20 +232,33 @@ function extractTables(html: string): Array<{ headers: string[]; rows: string[][
     const headers: string[] = [];
     let headerMatch;
     while ((headerMatch = headerRegex.exec(tableContent)) !== null) {
-      if (headerMatch[1]) {
-        headers.push(headerMatch[1].replace(/<[^>]*>/g, '').trim());
+      // Memory-optimized type guard approach with explicit checking
+      const headerContent = headerMatch[1];
+      // Strong type check to guarantee string type for compiler optimization
+      if (typeof headerContent === 'string') {
+        headers.push(headerContent.replace(/<[^>]*>/g, '').trim());
       }
     }
     
     const rows: string[][] = [];
     let rowMatch;
     while ((rowMatch = rowRegex.exec(tableContent)) !== null) {
+      // Memory-optimized type guard for row content
       const rowContent = rowMatch[1];
+      // Skip processing if rowContent is undefined
+      if (typeof rowContent !== 'string') continue;
+      
       const cells: string[] = [];
       
       let cellMatch;
       while ((cellMatch = cellRegex.exec(rowContent)) !== null) {
-        cells.push(cellMatch[1].replace(/<[^>]*>/g, '').trim());
+        // Add type safety with stronger type assertions for compiler optimization
+        const cellContent = cellMatch[1];
+        // Using type guard pattern for string | undefined
+        if (typeof cellContent === 'string') {
+          // Safe string operation on verified string value - memory optimized
+          cells.push(cellContent.replace(/<[^>]*>/g, '').trim());
+        }
       }
       
       if (cells.length > 0) {

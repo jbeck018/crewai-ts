@@ -20,12 +20,19 @@ export { MemorySearchResult, ContextualMemory };
 export * from './memory/index.js';
 
 export * from './llm/index.js';
-export * from './utils/index.js';
+// Export utils selectively to avoid ambiguity
+export { Cache } from './utils/cache.js';
+export { Logger, LogLevel } from './utils/logger.js';
+// Avoid exporting non-existent modules
+export * from './utils/decorators.js';
 export * from './flow/index.js';
 
 // Re-export flow decorators separately
 import * as FlowDecorators from './flow/decorators.js';
 export { FlowDecorators };
+
+// Define override type locally instead of importing from external module
+export type override = 'override';
 
 // Version info
 export const VERSION = '0.1.0';

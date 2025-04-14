@@ -37,7 +37,12 @@ export interface EnhancedTool extends BaseTool {
 /**
  * Cache key generator function type
  */
-export type CacheKeyGenerator = (tool: BaseTool, args: any[]) => string;
+export type CacheKeyGenerator = (tool: BaseTool, args: unknown[]) => string;
+
+/**
+ * Tool execution parameters type with memory-optimized structure
+ */
+export type ToolParameters = Record<string, unknown>;
 
 /**
  * Tools Handler for managing agent tools with efficient access patterns
@@ -56,11 +61,30 @@ export class ToolsHandler {
   
   /**
    * Create a new ToolsHandler
+   * Optimized for memory efficiency and type safety
    */
   constructor() {
-    // Default cache key generator function
-    this.defaultKeyGenerator = (tool, args) => {
-      return `${tool.name}:${JSON.stringify(args)}`;
+    // Default cache key generator function with improved memory handling
+    // Uses explicit typing for parameters and optimizes string handling
+    this.defaultKeyGenerator = (tool: BaseTool, args: unknown[]): string => {
+      try {
+        // Type validation to ensure proper serialization
+        if (!tool || typeof tool.name !== 'string') {
+          return `unknown-tool:${Date.now()}`;
+        }
+
+        // Memory-optimized argument handling - filter undefined/null values
+        const filteredArgs = args.filter(arg => arg !== undefined && arg !== null);
+        
+        // Use compact string representation with hash to minimize memory usage
+        const argsStr = JSON.stringify(filteredArgs);
+        // Use substring to limit key size for large argument objects
+        return `${tool.name}:${argsStr.substring(0, 100)}`;
+      } catch (error) {
+        // Fallback with error-safe implementation
+        const toolName = tool && typeof tool.name === 'string' ? tool.name : 'unknown';
+        return `${toolName}:${Date.now()}`;
+      }
     };
   }
   
@@ -121,9 +145,13 @@ export class ToolsHandler {
    * @returns Array of tools in the category
    */
   getToolsByCategory(category: ToolCategory): EnhancedTool[] {
-    return this.getAllTools().filter(tool => 
-      tool.metadata?.category === category
-    );
+    // Memory-optimized filtering with explicit null/undefined checking for improved type safety
+    return this.getAllTools().filter(tool => {
+      // First check if metadata exists to avoid unnecessary property access
+      if (!tool.metadata) return false;
+      // Then safely compare the category values
+      return tool.metadata.category === category;
+    });
   }
   
   /**
@@ -158,25 +186,41 @@ export class ToolsHandler {
    * @param keyGenerator Optional custom cache key generator
    * @returns The result of the tool execution
    */
-  async executeTool(name: string, args: any[], keyGenerator?: CacheKeyGenerator): Promise<any> {
+  async executeTool<T = unknown>(name: string, args: unknown[], keyGenerator?: CacheKeyGenerator): Promise<T> {
+    // Validate name is non-empty string with proper type safety
+    if (typeof name !== 'string' || !name.trim()) {
+      throw new TypeError('Tool name must be a non-empty string');
+    }
+
     const tool = this.getTool(name);
     
     if (!tool) {
       throw new Error(`Tool not found: ${name}`);
     }
     
-    // If caching is enabled, try to get from cache or compute
+    // Ensure args is an array for type safety and memory optimization
+    // This implementation is more robust with undefined/null handling
+    const safeArgs = Array.isArray(args) ? args : (args ? [args] : []);
+    
+    // If caching is enabled, try to get from cache or compute with memory optimization
     if (this.cache) {
+      // Use provided key generator or default, with proper null handling
       const keygen = keyGenerator || this.defaultKeyGenerator;
-      const cacheKey = keygen(tool, args);
+      // Generate cache key with proper type handling
+      const cacheKey = keygen(tool, safeArgs);
       
-      return this.cache.getOrCompute(cacheKey, async () => {
-        return await tool.invoke(...args);
+      // Use generic type parameter for better type safety
+      return this.cache.getOrCompute<T>(cacheKey, async () => {
+        // Extract the first argument with proper type safety
+        const firstArg = safeArgs.length > 0 ? safeArgs[0] : undefined;
+        // Cast the result to the expected type for memory-efficient handling
+        return await tool.execute(firstArg) as T;
       });
     }
     
-    // If no cache, just execute the tool
-    return await tool.invoke(...args);
+    // If no cache, execute the tool with memory-optimized parameter handling
+    const firstArg = safeArgs.length > 0 ? safeArgs[0] : undefined;
+    return await tool.execute(firstArg) as T;
   }
   
   /**

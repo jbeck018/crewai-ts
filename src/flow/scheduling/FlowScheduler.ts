@@ -6,7 +6,7 @@
  */
 import { Flow, FlowState } from '../index.js';
 import { FlowEventBus, EventPriority, FlowEvent } from '../events/FlowEventBus.js';
-import { FlowExecutionTracker } from '../execution/FlowExecutionTracker.js';
+import { FlowExecutionTracker, FlowExecutionMetrics } from '../execution/FlowExecutionTracker.js';
 
 /**
  * Flow node in the dependency graph
@@ -589,8 +589,8 @@ export class FlowScheduler {
       if (tracker) {
         tracker.stopTracking();
         const metrics = tracker.getMetrics();
-        if (metrics.duration) {
-          this.totalDuration += metrics.duration;
+        if (metrics) {
+          this.totalDuration += metrics.executionTimeMs;
         }
       }
       

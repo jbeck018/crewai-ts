@@ -226,7 +226,7 @@ export class LiteAgent implements BaseAgent {
               expectedOutput: input.expectedOutput || 'Detailed response',
               agent,
               async: false,
-              context: [],
+              context: [] as string[],
               cachingStrategy: 'none' as const
             };
             

@@ -69,32 +69,33 @@ export interface KnowledgeSearchResult {
  */
 export interface EmbedderConfig {
   /**
-   * Model name to use for embeddings
-   * @default 'all-MiniLM-L6-v2'
+   * Embedding model name
+   * @default 'default'
    */
   model?: string;
 
   /**
-   * Dimension of embeddings
-   * @default 384
+   * Embedding dimensions
+   * @default 768
    */
   dimensions?: number;
 
   /**
-   * Whether to normalize embeddings
-   * @default true
+   * Provider type
+   * @default 'openai'
    */
-  normalize?: boolean;
-
-  /**
-   * Custom embedding function provider
-   */
-  provider?: 'openai' | 'cohere' | 'huggingface' | 'fastembed' | 'custom';
+  provider?: 'cohere' | 'openai' | 'huggingface' | 'fastembed' | 'custom';
 
   /**
    * Custom embedding function
    */
-  embeddingFunction?: (text: string) => Promise<number[]>;
+  embeddingFunction?: (text: string) => Promise<Float32Array>;
+
+  /**
+   * Whether to normalize embeddings
+   * @default false
+   */
+  normalize?: boolean;
 }
 
 /**

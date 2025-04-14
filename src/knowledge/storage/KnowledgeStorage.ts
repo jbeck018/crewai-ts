@@ -95,7 +95,9 @@ export class KnowledgeStorage extends BaseKnowledgeStorage {
    * Embedding configuration
    * @private
    */
-  private embeddingConfig: Required<EmbedderConfig>;
+  private embeddingConfig: Required<EmbedderConfig> & {
+    embeddingFunction: ((text: string) => Promise<number[] | Float32Array>) | null;
+  };
 
   /**
    * Memory-mapped database client (to be initialized)
@@ -1010,7 +1012,10 @@ export class KnowledgeStorage extends BaseKnowledgeStorage {
           // Safe mapping with null checks
           const batchPromises = batch.map((text: string) => {
             if (embeddingFunc) {
-              return embeddingFunc(text);
+              return embeddingFunc(text).then(result => {
+                // Convert Float32Array to number[] if needed
+                return Array.isArray(result) ? result : Array.from(result);
+              });
             }
             // Fallback if undefined (should never happen)
             return Promise.resolve([] as number[]);

@@ -89,6 +89,12 @@ function validateCondition(condition: Condition): void {
  */
 export function start(condition?: Condition): MethodDecorator {
   return function(target: any, propertyKey: string | symbol, descriptor: PropertyDescriptor) {
+    // Safety check: ensure descriptor and value exist
+    if (!descriptor || descriptor.value === undefined) {
+      console.warn(`Start decorator applied to ${String(propertyKey)} but descriptor or value is undefined`);
+      return descriptor;
+    }
+    
     // Performance optimization: capture original once
     const originalMethod = descriptor.value;
     
@@ -129,6 +135,12 @@ export function listen(condition: Condition): MethodDecorator {
   validateCondition(condition);
   
   return function(target: any, propertyKey: string | symbol, descriptor: PropertyDescriptor) {
+    // Safety check: ensure descriptor and value exist
+    if (!descriptor || descriptor.value === undefined) {
+      console.warn(`Listen decorator applied to ${String(propertyKey)} but descriptor or value is undefined`);
+      return descriptor;
+    }
+    
     // Performance optimization: capture original once
     const originalMethod = descriptor.value;
     
@@ -162,6 +174,12 @@ export function router(condition: Condition): MethodDecorator {
   validateCondition(condition);
   
   return function(target: any, propertyKey: string | symbol, descriptor: PropertyDescriptor) {
+    // Safety check: ensure descriptor and value exist
+    if (!descriptor || descriptor.value === undefined) {
+      console.warn(`Listen decorator applied to ${String(propertyKey)} but descriptor or value is undefined`);
+      return descriptor;
+    }
+    
     // Performance optimization: capture original once
     const originalMethod = descriptor.value;
     

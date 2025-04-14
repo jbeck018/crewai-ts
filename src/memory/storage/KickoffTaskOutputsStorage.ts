@@ -159,12 +159,26 @@ export class KickoffTaskOutputsStorage {
    * @param task Task to update in cache
    */
   private updateCache(task: TaskOutput): void {
-    // Implement simple LRU cache - remove oldest if at capacity
-    if (this.cache.size >= this.cacheSize) {
-      const oldestKey = this.cache.keys().next().value;
-      this.cache.delete(oldestKey);
+    // Type safety check for task ID
+    if (!task || typeof task.taskId !== 'string' || task.taskId.trim().length === 0) {
+      console.warn('Attempted to cache task with invalid ID');
+      return;
     }
     
+    // Implement simple LRU cache with memory optimization - remove oldest if at capacity
+    if (this.cache.size >= this.cacheSize) {
+      // Get iterator for the keys of the cache
+      const keysIterator = this.cache.keys();
+      
+      // Get the first key with type safety
+      const iterResult = keysIterator.next();
+      if (!iterResult.done && typeof iterResult.value === 'string') {
+        // Only delete if the key is a valid string
+        this.cache.delete(iterResult.value);
+      }
+    }
+    
+    // Safe to use task.taskId as we've validated it above
     this.cache.set(task.taskId, task);
   }
 }

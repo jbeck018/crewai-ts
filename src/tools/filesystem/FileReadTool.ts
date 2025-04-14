@@ -45,7 +45,7 @@ export function createFileReadTool() {
       try {
         // Normalize path and check if file exists
         const normalizedPath = path.normalize(input.filepath);
-        const stats = await fs.stat(normalizedPath).catch(() => null);
+        const stats = await fs.stat(normalizedPath).catch((): null => null);
         
         if (!stats) {
           return {

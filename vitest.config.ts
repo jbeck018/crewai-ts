@@ -32,9 +32,15 @@ export default defineConfig({
     cache: {
       dir: '.vitest-cache',
     },
-    // Optimize timeouts for faster feedback
-    testTimeout: 10000,
-    hookTimeout: 10000,
-    teardownTimeout: 5000,
+    // Optimize timeouts for faster feedback and prevent hanging tests
+    testTimeout: 5000,
+    hookTimeout: 3000,
+    teardownTimeout: 2000,
+    // Abort tests on first failure for faster feedback
+    bail: 1,
+    // Retry failed tests for better reliability
+    retry: 0,
+    // Ensure tests are properly isolated to prevent memory leaks
+    isolate: true,
   },
 });

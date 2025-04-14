@@ -12,10 +12,35 @@ import { BaseEmbedder, BaseEmbedderOptions } from './BaseEmbedder.js';
  */
 export interface FastTextEmbedderOptions extends BaseEmbedderOptions {
   /**
+   * Model name
+   */
+  model: string;
+
+  /**
    * Path to FastText model file (.bin or .ftz format)
    * If not provided, will attempt to download a default model
    */
-  modelPath?: string;
+  modelPath: string;
+
+  /**
+   * Dimensions of the embeddings
+   */
+  dimensions: number;
+
+  /**
+   * Maximum sequence length
+   */
+  maxLength?: number;
+
+  /**
+   * Whether to use average pooling
+   */
+  useAveragePooling?: boolean;
+
+  /**
+   * Request timeout in milliseconds
+   */
+  timeout?: number;
 
   /**
    * Whether to use quantized models for memory efficiency
@@ -65,57 +90,62 @@ declare global {
  * Memory-efficient text embeddings using FastText models
  * Optimized for multilingual support and minimal resource usage
  */
-export class FastTextEmbedder extends BaseEmbedder {
+export class FastTextEmbedder extends BaseEmbedder<FastTextEmbedderOptions> {
   /**
    * FastText model instance (lazy loaded)
    */
-  private model: any = null;
+  private _modelInstance: any = null;
 
   /**
    * Whether the model is ready
    */
-  private modelReady: boolean = false;
+  private _modelReady: boolean = false;
 
   /**
    * Model initialization promise (for concurrent calls)
    */
-  private initializationPromise: Promise<void> | null = null;
+  private _initializationPromise: Promise<void> | null = null;
 
   /**
    * Path to FastText model file
    */
-  private modelPath: string;
+  private _modelPath: string;
 
   /**
    * Whether to use quantized models
    */
-  private useQuantized: boolean;
+  private _useQuantized: boolean;
 
   /**
    * Language for pre-trained model
    */
-  private language: string;
+  private _language: string;
 
   /**
    * Whether to remove OOV words
    */
-  private removeOOV: boolean;
+  private _removeOOV: boolean;
 
   /**
    * Maximum vocabulary size
    */
-  private maxVocabSize: number;
+  private _maxVocabSize: number;
 
   /**
    * Word vectors cache for performance
    * Uses a Map for O(1) lookup performance
    */
-  private vectorCache: Map<string, Float32Array> = new Map();
+  private _vectorCache: Map<string, Float32Array> = new Map();
+
+  /**
+   * Dimensions of the embeddings
+   */
+  private _dimensions: number;
 
   /**
    * Constructor for FastTextEmbedder
    */
-  constructor(options: FastTextEmbedderOptions = {}) {
+  constructor(options: FastTextEmbedderOptions) {
     // Set provider to custom since fasttext is not in the standard provider list
     super({
       ...options,
@@ -128,11 +158,12 @@ export class FastTextEmbedder extends BaseEmbedder {
     });
 
     // Set model options
-    this.modelPath = options.modelPath || '';
-    this.useQuantized = options.useQuantized !== undefined ? options.useQuantized : true;
-    this.language = options.language || 'en';
-    this.removeOOV = options.removeOOV || false;
-    this.maxVocabSize = options.maxVocabSize || 100000;
+    this._modelPath = options.modelPath || '';
+    this._useQuantized = options.useQuantized !== undefined ? options.useQuantized : true;
+    this._language = options.language || 'en';
+    this._removeOOV = options.removeOOV || false;
+    this._maxVocabSize = options.maxVocabSize || 100000;
+    this._dimensions = options.dimensions || 300;
 
     // Preload model if needed
     if (options.preload !== false) {
@@ -150,13 +181,13 @@ export class FastTextEmbedder extends BaseEmbedder {
    */
   private async initializeModel(): Promise<void> {
     // Return existing initialization if in progress
-    if (this.initializationPromise) {
-      return this.initializationPromise;
+    if (this._initializationPromise) {
+      return this._initializationPromise;
     }
 
     // Create new initialization promise
-    this.initializationPromise = this._initializeModel();
-    return this.initializationPromise;
+    this._initializationPromise = this._initializeModel();
+    return this._initializationPromise;
   }
 
   /**
@@ -181,12 +212,12 @@ export class FastTextEmbedder extends BaseEmbedder {
       const FastText = global.FastText;
 
       // Determine the model path
-      let modelPath = this.modelPath;
+      let modelPath = this._modelPath;
       
       if (!modelPath) {
         // If no model path is provided, use a pre-trained model based on language
-        const extension = this.useQuantized ? '.ftz' : '.bin';
-        const modelName = `cc.${this.language}.300${extension}`;
+        const extension = this._useQuantized ? '.ftz' : '.bin';
+        const modelName = `cc.${this._language}.300${extension}`;
         
         // Check if model exists in common locations
         const fs = await import('fs/promises');
@@ -238,18 +269,18 @@ export class FastTextEmbedder extends BaseEmbedder {
       const fastText = new FastText();
       
       await fastText.loadModel(modelPath, {
-        maxVocabSize: this.maxVocabSize
+        maxVocabSize: this._maxVocabSize
       });
       
-      this.model = fastText;
-      this.modelReady = true;
+      this._modelInstance = fastText;
+      this._modelReady = true;
 
       if (this.options.debug) {
         console.log('FastText model initialized successfully');
       }
     } catch (error) {
-      this.modelReady = false;
-      this.initializationPromise = null;
+      this._modelReady = false;
+      this._initializationPromise = null;
       const errorMessage = error instanceof Error ? error.message : String(error);
       throw new Error(`Failed to initialize FastText model: ${errorMessage}`);
     }
@@ -260,28 +291,29 @@ export class FastTextEmbedder extends BaseEmbedder {
    * @param word Word to get vector for
    * @returns Promise resolving to word vector
    */
-  private async getWordVector(word: string): Promise<Float32Array> {
+  private async getWordVector(word: string): Promise<Float32Array | null> {
     // Check cache first
-    if (this.vectorCache.has(word)) {
-      return this.vectorCache.get(word)!;
+    const cachedVector = this._vectorCache.get(word);
+    if (cachedVector) {
+      return cachedVector;
     }
     
     // Get vector from model (ensure model is available)
-    if (!this.model || typeof this.model.getWordVector !== 'function') {
+    if (!this._modelInstance || typeof this._modelInstance.getWordVector !== 'function') {
       throw new Error('FastText model not initialized properly');
     }
     
-    const vector = await this.model.getWordVector(word);
+    const vector = await this._modelInstance.getWordVector(word);
     
     // Convert to Float32Array for memory efficiency (ensure vector exists)
     if (!vector || !Array.isArray(vector)) {
-      throw new Error(`Failed to get vector for word: ${word}`);
+      return null;
     }
     
     const float32Vector = new Float32Array(vector);
     
     // Cache vector for future use
-    this.vectorCache.set(word, float32Vector);
+    this._vectorCache.set(word, float32Vector);
     
     return float32Vector;
   }
@@ -292,205 +324,111 @@ export class FastTextEmbedder extends BaseEmbedder {
    * @param text Text to embed
    * @returns Promise resolving to Float32Array of embeddings
    */
-  protected async embedText(text: string): Promise<Float32Array> {
+  protected override async embedText(text: string): Promise<Float32Array> {
+    if (!text) {
+      if (this.options.debug) {
+        console.warn('Empty text provided for embedding, returning zero vector');
+      }
+      return new Float32Array(this._dimensions);
+    }
+
+    const cacheKey = this.generateCacheKey(text);
+    const cached = this.getCachedEmbedding(cacheKey);
+    if (cached) {
+      return cached;
+    }
+
     try {
-      // Ensure model is initialized
-      if (!this.modelReady) {
+      if (!this._modelInstance) {
         await this.initializeModel();
-        if (!this.modelReady) {
-          throw new Error('Failed to initialize FastText model');
-        }
       }
 
-      // Pre-process text for optimal FastText handling
-      const words = text.toLowerCase()
-        .replace(/[\r\n]+/g, ' ')
-        .replace(/[^\w\s]/g, ' ')
-        .split(/\s+/)
-        .filter(w => w.length > 0);
-      
-      if (words.length === 0) {
-        // Return zero vector for empty text
-        return new Float32Array(this.options.dimensions!);
+      // Tokenize text
+      const tokens = text.toLowerCase().match(/[\w\']+|[.,!?;:]/g) || [];
+      if (!tokens.length) {
+        return new Float32Array(this._dimensions);
       }
 
-      // Get vectors for all words in parallel for performance
-      const wordVectors: Float32Array[] = [];
-      
-      // Ensure model is ready before processing words
-      if (!this.model || !this.modelReady) {
-        throw new Error('FastText model not initialized properly');
-      }
-      
-      for (const word of words) {
-        if (!word) continue; // Skip empty words
-        
-        try {
-          const vector = await this.getWordVector(word);
-          if (vector && vector.length > 0) {
-            wordVectors.push(vector);
+      // Get embeddings for each token
+      const embeddings: (Float32Array | null)[] = await Promise.all(
+        tokens.map(async (token) => {
+          const cachedVector = this._vectorCache.get(token);
+          if (cachedVector) {
+            return cachedVector;
           }
-        } catch (e) {
-          // Skip OOV words if configured
-          if (!this.removeOOV) {
-            // Use zero vector for OOV words (ensure dimensions is set)
-            const dimensions = this.options.dimensions || 300; // Default to 300 if undefined
-            wordVectors.push(new Float32Array(dimensions));
+
+          const embedding = await this.getWordVector(token);
+          if (embedding) {
+            this._vectorCache.set(token, embedding);
+            return embedding;
+          }
+          return null;
+        })
+      );
+
+      // Calculate average embedding
+      const sum = new Float32Array(this._dimensions);
+      embeddings.forEach(embedding => {
+        if (embedding) {
+          for (let i = 0; i < this._dimensions; i++) {
+            // Double null check to ensure both sum and embedding elements exist
+            sum[i] = (sum[i] || 0) + (embedding[i] || 0);
           }
         }
-      }
-      
-      if (wordVectors.length === 0) {
-        // Return zero vector if no words were found or all were OOV and removed
-        return new Float32Array(this.options.dimensions);
+      });
+
+      // Average the embeddings
+      const validEmbeddings = embeddings.filter((embedding): embedding is Float32Array => embedding !== null && embedding !== undefined);
+      const averaged = new Float32Array(this._dimensions);
+      const count = validEmbeddings.length || 1; // Prevent division by zero
+      for (let i = 0; i < this._dimensions; i++) {
+        averaged[i] = (sum[i] || 0) / count;
       }
 
-      // Calculate average vector (memory-efficient approach)
-      const result = new Float32Array(this.options.dimensions);
-      
-      // Sum all vectors
-      for (const vector of wordVectors) {
-        // Skip if vector is undefined or null
-        if (!vector) continue;
-        
-        // Ensure vector has the expected length
-        const vectorLength = Math.min(vector.length || 0, result.length);
-        for (let i = 0; i < vectorLength; i++) {
-          result[i] += vector[i] || 0; // Add 0 if the value is undefined
-        }
-      }
-      
-      // Divide by the number of vectors (avoid division by zero)
-      const divisor = wordVectors.length || 1; // Use 1 if length is 0
-      for (let i = 0; i < result.length; i++) {
-        result[i] /= divisor;
-      }
-      
-      // Normalize if needed
-      return this.options.normalize 
-        ? this.normalizeVector(result)
-        : result;
+      // Cache and return
+      this.cache.set(cacheKey, averaged);
+      return averaged;
+
     } catch (error) {
-      // Enhance error with helpful context
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      throw new Error(`FastText embedding failed: ${errorMessage}`);
+      console.error('FastText embedding failed:', error);
+      return new Float32Array(this._dimensions);
     }
   }
 
-  /**
-   * Override batch embedding for better performance with FastText
-   * @param texts Array of texts to embed
-   * @returns Promise resolving to array of Float32Array embeddings
-   */
-  override async embedBatch(texts: string[]): Promise<Float32Array[]> {
-    // Filter empty texts
-    const validTexts = texts.filter(text => text && text.trim() !== '');
-    
-    if (validTexts.length === 0) {
-      if (this.options.debug) {
-        console.warn('No valid texts provided for batch embedding');
-      }
+  public override async embed(text: string): Promise<Float32Array> {
+    return this.embedText(text);
+  }
+
+  public override async embedBatch(texts: string[]): Promise<Float32Array[]> {
+    if (!texts || texts.length === 0) {
       return [];
     }
-
-    // Check cache for all texts first
-    const cacheResults: (Float32Array | null)[] = validTexts.map(text => {
-      const cacheKey = this.generateCacheKey(text);
-      return this.getCachedEmbedding(cacheKey);
-    });
-
-    // If all results are cached, return them
-    if (cacheResults.every(result => result !== null)) {
-      return cacheResults as Float32Array[];
+    
+    // Ensure model is initialized
+    if (!this._modelInstance) {
+      await this.initializeModel();
     }
-
-    // Find texts that need embedding
-    const textsToEmbed: { text: string; index: number }[] = validTexts
-      .map((text, index) => ({ text, index }))
-      .filter((item, index) => cacheResults[index] === null);
-
-    try {
-      // Ensure model is initialized
-      if (!this.modelReady) {
-        await this.initializeModel();
-        if (!this.modelReady) {
-          throw new Error('Failed to initialize FastText model');
-        }
-      }
-
-      // Process texts in parallel with controlled concurrency
-      const batchSize = this.options.batchSize || 16;
-      const results: { index: number; embedding: Float32Array }[] = [];
-      
-      // Process in batches for better memory management
-      for (let i = 0; i < textsToEmbed.length; i += batchSize) {
-        const batch = textsToEmbed.slice(i, i + batchSize);
-        
-        // Process batch in parallel
-        const batchPromises = batch.map(async item => {
-          try {
-            const embedding = await this.embedText(item.text);
-            
-            // Cache the embedding
-            this.cacheEmbedding(this.generateCacheKey(item.text), embedding);
-            
-            return { index: item.index, embedding };
-          } catch (error) {
-            if (this.options.debug) {
-              console.error(`Error embedding text at index ${item.index}:`, error);
-            }
-            
-            // Return zero vector for failed embeddings
-            return {
-              index: item.index,
-              embedding: new Float32Array(this.options.dimensions)
-            };
-          }
-        });
-        
-        const batchResults = await Promise.all(batchPromises);
-        results.push(...batchResults);
-      }
-
-      // Combine cached and new results
-      const combinedResults: Float32Array[] = new Array(validTexts.length);
-      
-      // Add cached results
-      cacheResults.forEach((result, index) => {
-        if (result !== null) {
-          combinedResults[index] = result;
-        }
-      });
-      
-      // Add new results - ensure we have valid results
-      results.forEach(result => {
-        if (result && typeof result.index === 'number' && result.embedding instanceof Float32Array) {
-          combinedResults[result.index] = result.embedding;
-        }
-      });
-
-      return combinedResults;
-    } catch (error) {
-      // Fall back to individual processing if batch fails
-      if (this.options.debug) {
-        console.error('Error in batch embedding, falling back to individual embedding:', error);
-      }
-      
-      // Use super.embedBatch as fallback
-      return super.embedBatch(texts);
+    
+    const results: Float32Array[] = [];
+    
+    for (const text of texts) {
+      const embedding = await this.embed(text);
+      results.push(embedding);
     }
+    
+    return results;
   }
 
   /**
    * Clean up resources when the embedder is no longer needed
    */
   async close(): Promise<void> {
-    if (this.model && typeof this.model.unloadModel === 'function') {
+    if (this._modelInstance && typeof this._modelInstance.unloadModel === 'function') {
       try {
-        await this.model.unloadModel();
-        this.modelReady = false;
-        this.initializationPromise = null;
-        this.vectorCache.clear();
+        await this._modelInstance.unloadModel();
+        this._modelReady = false;
+        this._initializationPromise = null;
+        this._vectorCache.clear();
         
         if (this.options.debug) {
           console.log('FastText model unloaded');

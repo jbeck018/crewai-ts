@@ -87,7 +87,8 @@ export class StructuredTaskOutputImpl<T = any> implements StructuredTaskOutput<T
    * Zero runtime cost for same type, safe casting for different types
    */
   getFormatted<R = T>(): R | undefined {
-    return this.formattedData as R | undefined;
+    // Cast to unknown first to avoid direct type conversion errors
+    return this.formattedData as unknown as R | undefined;
   }
   
   /**

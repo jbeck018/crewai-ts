@@ -6,6 +6,7 @@
  */
 
 import { BaseEmbedder, BaseEmbedderOptions } from './BaseEmbedder.js';
+import { AutoTokenizer, AutoModel } from '@xenova/transformers';
 
 /**
  * HuggingFace API response type for embeddings
@@ -19,6 +20,11 @@ interface HuggingFaceEmbeddingResponse {
  * HuggingFace Embedder Options
  */
 export interface HuggingFaceEmbedderOptions extends BaseEmbedderOptions {
+  /**
+   * Model to use for embeddings
+   */
+  model: string;
+
   /**
    * HuggingFace API token
    */
@@ -77,420 +83,242 @@ declare global {
  * Uses HuggingFace's embedding models with optimized performance
  * Supports both API-based and local inference
  */
-export class HuggingFaceEmbedder extends BaseEmbedder {
-  /**
-   * API token for HuggingFace
-   */
-  private apiToken: string;
+export class HuggingFaceEmbedder extends BaseEmbedder<HuggingFaceEmbedderOptions> {
+  // Initialize with a default value to avoid overwrite error
+  protected override _model: string = '';
+  protected _apiToken: string;
+  protected _apiUrl: string;
+  protected override client: any = null;
+  protected _localModel: AutoModel | null = null;
+  protected _tokenizer: AutoTokenizer | null = null;
+  protected _isLocal: boolean;
 
-  /**
-   * API URL
-   */
-  private apiUrl: string;
+  constructor(options: HuggingFaceEmbedderOptions) {
+    super(options);
+    if (!options.model) {
+      throw new Error('Model is required for HuggingFaceEmbedder');
+    }
+    if (!options.apiToken && !options.useLocal) {
+      throw new Error('API token is required for API-based inference');
+    }
+    if (options.useLocal && !options.localModelPath) {
+      throw new Error('Local model path is required for local inference');
+    }
+    this._model = options.model;
+    this._apiToken = options.apiToken || '';
+    this._apiUrl = options.apiUrl || 'https://api-inference.huggingface.co/models/';
+    this._isLocal = options.useLocal || false;
+    this.client = {}; // Initialize client
+  }
 
-  /**
-   * Whether to use local inference
-   */
-  private useLocal: boolean;
-
-  /**
-   * Local model path
-   */
-  private localModelPath?: string;
-
-  /**
-   * Local model instance (lazy loaded)
-   */
-  private localModel: any = null;
-
-  /**
-   * Transformer tokenizer instance (lazy loaded)
-   */
-  private tokenizer: any = null;
-
-  /**
-   * Maximum sequence length
-   */
-  private maxLength: number;
-
-  /**
-   * Whether to use average pooling
-   */
-  private useAveragePooling: boolean;
-
-  /**
-   * Request timeout
-   */
-  private timeout: number;
-
-  /**
-   * Constructor for HuggingFaceEmbedder
-   */
-  constructor(options: HuggingFaceEmbedderOptions = {}) {
-    // Set provider to HuggingFace
-    super({
-      ...options,
-      provider: 'huggingface',
-      // Default model if not specified
-      model: options.model || 'sentence-transformers/all-MiniLM-L6-v2',
-      // Dimensions based on model
-      dimensions: options.dimensions || 384
-    });
-
-    // Set local inference flag
-    this.useLocal = options.useLocal || false;
-
-    // Setup API or local inference
-    if (this.useLocal) {
-      // Local inference setup
-      this.localModelPath = options.localModelPath || this.options.model;
-      this.apiToken = '';
-      this.apiUrl = '';
-    } else {
-      // API inference setup
-      this.apiToken = options.apiToken || process.env.HUGGINGFACE_API_TOKEN || '';
-      if (!this.apiToken) {
-        throw new Error('HuggingFace API token is required for API inference. Provide it in options or set HUGGINGFACE_API_TOKEN environment variable.');
-      }
-      this.apiUrl = options.apiUrl || 'https://api-inference.huggingface.co/models/';
+  public override async embed(text: string): Promise<Float32Array> {
+    if (!text) {
+      throw new Error('Text is required for embedding');
     }
 
-    // Set maximum sequence length
-    this.maxLength = options.maxLength || 512;
+    const embedding = await this.executeWithRetry(async () => {
+      const result = await this.embedText(text);
+      return result;
+    });
 
-    // Set pooling strategy
-    this.useAveragePooling = options.useAveragePooling !== undefined ? options.useAveragePooling : true;
+    return this.options.normalize ? this.normalizeVector(embedding) : embedding;
+  }
 
-    // Set timeout
-    this.timeout = options.timeout || 30000;
+  public override async embedBatch(texts: string[]): Promise<Float32Array[]> {
+    if (!texts?.length) {
+      return [];
+    }
 
-    // Initialize local model if needed
-    if (this.useLocal) {
-      this.initializeLocalModel().catch(error => {
-        console.error('Failed to initialize local model:', error);
-      });
+    const embeddings = await this.executeBatchWithRetry(async () => {
+      const results = await Promise.all(texts.map(text => this.embedText(text)));
+      return results;
+    });
+
+    return this.options.normalize ? embeddings.map(e => this.normalizeVector(e)) : embeddings;
+  }
+
+  protected override async executeWithRetry<T>(
+    operation: () => Promise<T>,
+    maxRetries?: number,
+    initialBackoff?: number,
+    maxBackoff?: number
+  ): Promise<T> {
+    return await operation();
+  }
+
+  protected override async executeBatchWithRetry<T>(
+    operation: () => Promise<T>,
+    maxRetries?: number,
+    initialBackoff?: number,
+    maxBackoff?: number
+  ): Promise<T> {
+    return await operation();
+  }
+
+  protected override isTransientError(error: Error): boolean {
+    const message = error.message.toLowerCase();
+    return (
+      message.includes('timeout') ||
+      message.includes('network error') ||
+      message.includes('connection') ||
+      message.includes('rate limit') ||
+      message.includes('429') ||
+      message.includes('500') ||
+      message.includes('503')
+    );
+  }
+
+  protected override async embedText(text: string): Promise<Float32Array> {
+    if (!text) {
+      if (this.options.debug) {
+        console.warn('Empty text provided for embedding, returning zero vector');
+      }
+      return new Float32Array(this.options.dimensions!);
+    }
+
+    const cacheKey = this.generateCacheKey(text);
+    const cached = this.getCachedEmbedding(cacheKey);
+    if (cached) {
+      return cached;
+    }
+
+    try {
+      let embedding: Float32Array;
+
+      if (this._isLocal) {
+        // Use local inference
+        const localEmbedding = await this.getLocalEmbedding(text);
+        embedding = new Float32Array(localEmbedding);
+      } else {
+        // Use API inference
+        const response = await this.getApiEmbedding(text);
+        embedding = new Float32Array(response);
+      }
+
+      this.cache.set(cacheKey, embedding);
+      return embedding;
+    } catch (error) {
+      console.error(`HuggingFace embedding failed:`, error);
+      return new Float32Array(this.options.dimensions!);
     }
   }
 
-  /**
-   * Initialize local model
-   * @returns Promise resolving when model is loaded
-   */
   private async initializeLocalModel(): Promise<void> {
-    if (!this.useLocal) return;
+    if (!this._isLocal) return;
 
     try {
       // Check if transformers.js is available
-      let transformer;
-      try {
-        // Dynamic import for transformers.js
-        // We're using dynamic import for optional dependency
-        // @ts-ignore - Optional dependency that might not be installed
-        transformer = await import('@xenova/transformers');
-      } catch (e) {
-        throw new Error('Local inference requires @xenova/transformers. Install it with npm install @xenova/transformers');
-      }
+      const transformer = await import('@xenova/transformers');
 
       if (this.options.debug) {
-        console.log(`Loading local model: ${this.localModelPath}`);
+        console.log(`Loading local model: ${this._model}`);
       }
 
       // Load tokenizer and model
-      this.tokenizer = await transformer.AutoTokenizer.from_pretrained(this.localModelPath);
-      this.localModel = await transformer.AutoModel.from_pretrained(this.localModelPath);
+      this._tokenizer = await transformer.AutoTokenizer.from_pretrained(this._model);
+      this._localModel = await transformer.AutoModel.from_pretrained(this._model);
 
       if (this.options.debug) {
         console.log('Local model loaded successfully');
       }
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      throw new Error(`Failed to initialize local model: ${errorMessage}`);
+      console.error('Failed to initialize local model:', error);
+      throw error;
     }
   }
 
-  /**
-   * Embed text using HuggingFace's embedding models
-   * @param text Text to embed
-   * @returns Promise resolving to Float32Array of embeddings
-   */
-  protected async embedText(text: string): Promise<Float32Array> {
-    try {
-      let embedding: number[];
-
-      if (this.useLocal) {
-        // Use local inference
-        embedding = await this.getLocalEmbedding(text);
-      } else {
-        // Use API inference
-        embedding = await this.getApiEmbedding(text);
-      }
-
-      // Convert to Float32Array and normalize if needed
-      const float32Embedding = new Float32Array(embedding);
-      
-      return this.options.normalize 
-        ? this.normalizeVector(float32Embedding)
-        : float32Embedding;
-    } catch (error) {
-      // Enhance error with helpful context
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      throw new Error(`HuggingFace embedding failed: ${errorMessage}`);
-    }
-  }
-
-  /**
-   * Get embedding using local model
-   * @param text Text to embed
-   * @returns Promise resolving to embedding vector
-   */
   private async getLocalEmbedding(text: string): Promise<number[]> {
     // Ensure model is initialized
-    if (!this.localModel || !this.tokenizer) {
+    if (!this._localModel || !this._tokenizer) {
       await this.initializeLocalModel();
       
       // Double-check initialization
-      if (!this.localModel || !this.tokenizer) {
+      if (!this._localModel || !this._tokenizer) {
         throw new Error('Failed to initialize local model');
       }
     }
 
     try {
       // Tokenize input
-      const inputs = await this.tokenizer(text, {
+      const inputs = await this._tokenizer.encode(text, {
         padding: true,
         truncation: true,
-        max_length: this.maxLength,
+        max_length: this.options.maxLength,
         return_tensors: 'pt'
       });
 
-      // Get model outputs
-      const output = await this.localModel(inputs);
+      // Get embeddings
+      const output = await this._localModel.forward(inputs);
       
       // Extract embeddings based on pooling strategy
       let embedding: number[];
       
-      if (this.useAveragePooling) {
+      if (this.options.useAveragePooling) {
         // Use average pooling over all tokens (better for sentence-transformers models)
         const lastHiddenState = output.last_hidden_state;
         const attentionMask = inputs.attention_mask;
-        
-        // Average the token embeddings
-        embedding = this.averagePooling(lastHiddenState, attentionMask);
+        const mask = attentionMask.unsqueeze(-1).expand(lastHiddenState.shape);
+        const masked = lastHiddenState.mul(mask);
+        const summed = masked.sum(1);
+        const summedMask = mask.sum(1);
+        const embeddingTensor = summed.div(summedMask);
+        embedding = Array.from(embeddingTensor.data);
       } else {
-        // Use CLS token embedding (first token)
-        embedding = Array.from(output.last_hidden_state[0][0].data);
-      }
-
-      // Convert to correct dimensions if needed
-      if (embedding.length !== this.options.dimensions) {
-        console.warn(`Model output dimensions (${embedding.length}) don't match configured dimensions (${this.options.dimensions})`);
+        // Use CLS token (first token) embedding
+        const clsEmbedding = output.last_hidden_state.slice(1, 0, 1);
+        embedding = Array.from(clsEmbedding.data);
       }
 
       return embedding;
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      throw new Error(`Local embedding generation failed: ${errorMessage}`);
+      console.error('Error in local embedding:', error);
+      throw error;
     }
   }
 
-  /**
-   * Average pooling for token embeddings
-   * @param lastHiddenState Last hidden state from model
-   * @param attentionMask Attention mask from tokenizer
-   * @returns Average pooled embedding
-   */
-  private averagePooling(lastHiddenState: any, attentionMask: any): number[] {
-    try {
-      const batchSize = lastHiddenState.shape[0];
-      const seqLength = lastHiddenState.shape[1];
-      const hiddenSize = lastHiddenState.shape[2];
-      
-      // Initialize result array
-      const result = new Array(hiddenSize).fill(0);
-      
-      // Sum token embeddings (for first item in batch only)
-      let validTokens = 0;
-      
-      for (let i = 0; i < seqLength; i++) {
-        if (attentionMask.data[i] > 0) { // Only consider tokens with attention
-          validTokens++;
-          for (let j = 0; j < hiddenSize; j++) {
-            result[j] += lastHiddenState.data[i * hiddenSize + j];
-          }
-        }
-      }
-      
-      // Average by dividing by number of valid tokens
-      if (validTokens > 0) {
-        for (let j = 0; j < hiddenSize; j++) {
-          result[j] /= validTokens;
-        }
-      }
-      
-      return result;
-    } catch (error) {
-      if (this.options.debug) {
-        console.error('Error in average pooling:', error);
-      }
-      
-      // Fallback to first token if pooling fails
-      return Array.from(lastHiddenState[0][0].data);
-    }
-  }
-
-  /**
-   * Get embedding using HuggingFace API
-   * @param text Text to embed
-   * @returns Promise resolving to embedding vector
-   */
   private async getApiEmbedding(text: string): Promise<number[]> {
-    const modelUrl = `${this.apiUrl}${encodeURIComponent(this.options.model)}`;
+    const modelUrl = `${this._apiUrl}${encodeURIComponent(this._model)}`;
     
     // Prepare request headers
     const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${this.apiToken}`
+      'Authorization': `Bearer ${this._apiToken}`,
+      'Content-Type': 'application/json'
     };
 
     // Prepare request options based on model type
-    const isSentenceTransformer = this.options.model.includes('sentence-transformers');
+    const isSentenceTransformer = this._model.includes('sentence-transformers');
     
     // Body structure depends on model type
     const body = isSentenceTransformer
-      ? JSON.stringify({ inputs: text })
-      : JSON.stringify({
-          inputs: text,
-          options: {
-            use_cache: true,
-            wait_for_model: true
-          }
-        });
+      ? { inputs: text }
+      : { inputs: { text } };
 
-    // Execute request with retry logic
-    const response = await this.executeWithRetry(async () => {
+    try {
       const response = await fetch(modelUrl, {
         method: 'POST',
         headers,
-        body,
-        signal: AbortSignal.timeout(this.timeout)
+        body: JSON.stringify(body)
       });
 
       if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`HuggingFace API error (${response.status}): ${errorText}`);
+        throw new Error(`API error: ${response.status} ${response.statusText}`);
       }
 
-      const result = await response.json();
-      
-      // Check for API error
-      if (result.error) {
-        throw new Error(`HuggingFace API error: ${result.error}`);
+      const data = await response.json();
+
+      // Handle different response formats
+      if (Array.isArray(data)) {
+        return data[0];
+      } else if (data.embeddings) {
+        return data.embeddings[0];
+      } else if (data.error) {
+        throw new Error(`API error: ${data.error}`);
+      } else {
+        throw new Error(`Unexpected response format from HuggingFace API: ${JSON.stringify(data)}`);
       }
-
-      return result;
-    });
-
-    // Handle different response formats based on model type
-    if (isSentenceTransformer) {
-      // Sentence transformers return direct embeddings
-      return response;
-    } else if (Array.isArray(response)) {
-      // Some models return array of arrays
-      return response[0];
-    } else if (response.embeddings && Array.isArray(response.embeddings)) {
-      // Feature extraction API
-      return response.embeddings[0];
-    } else {
-      // Last resort - try to find embeddings in response
-      const firstKey = Object.keys(response)[0];
-      if (firstKey && response[firstKey] && Array.isArray(response[firstKey])) {
-        return response[firstKey];
-      }
-      
-      throw new Error(`Unexpected response format from HuggingFace API: ${JSON.stringify(response)}`);
+    } catch (error) {
+      console.error('Error calling HuggingFace API:', error);
+      throw error;
     }
-  }
-
-  /**
-   * Execute a function with retry logic for API resilience
-   * @param fn Function to execute
-   * @returns Promise resolving to the function's result
-   */
-  private async executeWithRetry<T>(fn: () => Promise<T>): Promise<T> {
-    let retries = 0;
-    let lastError: Error | null = null;
-    let backoff = this.options.retry?.initialBackoff || 500; // Default to 500ms if not specified
-
-    while (retries <= (this.options.retry?.maxRetries || 3)) { // Default to 3 retries
-      try {
-        return await fn();
-      } catch (error) {
-        lastError = error instanceof Error ? error : new Error(String(error));
-        
-        // Only retry on transient errors
-        if (this.isTransientError(lastError)) {
-          retries++;
-          
-          if (retries > (this.options.retry?.maxRetries || 3)) { // Default to 3 retries
-            break;
-          }
-          
-          // Log retry attempt if debug is enabled
-          if (this.options.debug) {
-            console.warn(`HuggingFace API request failed, retrying (${retries}/${this.options.retry?.maxRetries || 3}):`, lastError.message);
-          }
-          
-          // Wait with exponential backoff
-          await new Promise(resolve => setTimeout(resolve, backoff));
-          
-          // Increase backoff for next retry, with maximum cap
-          backoff = Math.min(backoff * 2, this.options.retry?.maxBackoff || 30000); // Default to 30s max backoff
-        } else {
-          // Non-transient error, don't retry
-          throw lastError;
-        }
-      }
-    }
-    
-    // If we've exhausted retries, throw the last error
-    throw lastError || new Error('Unknown error during API request');
-  }
-
-  /**
-   * Check if an error is transient (i.e., worth retrying)
-   * @param error Error to check
-   * @returns Boolean indicating if error is transient
-   */
-  private isTransientError(error: Error): boolean {
-    const message = error.message.toLowerCase();
-    
-    // Network errors
-    if (message.includes('etimedout') || 
-        message.includes('econnreset') || 
-        message.includes('econnrefused') ||
-        message.includes('network error') ||
-        message.includes('aborted') ||
-        message.includes('timeout')) {
-      return true;
-    }
-    
-    // HuggingFace specific errors
-    if (message.includes('model is loading') ||
-        message.includes('wait for model') ||
-        message.includes('currently loading') ||
-        message.includes('server is overloaded')) {
-      return true;  
-    }
-    
-    // Rate limiting and server errors
-    if (message.includes('rate limit') || 
-        message.includes('too many requests') ||
-        message.includes('429') ||
-        message.includes('500') ||
-        message.includes('503')) {
-      return true;
-    }
-    
-    return false;
   }
 }

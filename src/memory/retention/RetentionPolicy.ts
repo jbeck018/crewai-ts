@@ -5,6 +5,12 @@
 
 import { BaseMemory, MemoryItem } from '../BaseMemory.js';
 
+// Extend MemoryItem with optional properties used by retention policies
+interface ExtendedMemoryItem extends MemoryItem {
+  updatedAt?: number;
+  relevance?: number;
+}
+
 /**
  * Base interface for memory retention policies
  */
@@ -14,7 +20,7 @@ export interface RetentionPolicy {
    * @param item The memory item to evaluate
    * @returns True if the item should be retained, false if it can be removed
    */
-  shouldRetain(item: MemoryItem): boolean;
+  shouldRetain(item: ExtendedMemoryItem): boolean;
   
   /**
    * Apply the retention policy to a memory store
@@ -69,7 +75,7 @@ export class TimeBasedRetentionPolicy implements RetentionPolicy {
     this.name = options.name;
   }
   
-  shouldRetain(item: MemoryItem): boolean {
+  shouldRetain(item: ExtendedMemoryItem): boolean {
     const now = Date.now();
     let timestamp: number;
     
@@ -78,7 +84,8 @@ export class TimeBasedRetentionPolicy implements RetentionPolicy {
         timestamp = item.lastAccessedAt ?? item.createdAt;
         break;
       case 'updatedAt':
-        timestamp = item.updatedAt ?? item.createdAt;
+        // Safe access with type casting
+        timestamp = (item as ExtendedMemoryItem).updatedAt ?? item.createdAt;
         break;
       case 'createdAt':
       default:
@@ -239,9 +246,9 @@ export class RelevanceBasedRetentionPolicy implements RetentionPolicy {
     if (this.relevanceFn) {
       // Use custom relevance function
       relevance = this.relevanceFn(item);
-    } else if (item.relevance !== undefined) {
-      // Use item's relevance property if available
-      relevance = item.relevance;
+    } else if ((item as ExtendedMemoryItem).relevance !== undefined) {
+      // Use item's relevance property if available with safe type casting
+      relevance = (item as ExtendedMemoryItem).relevance || 0;
     } else {
       // Default to high relevance if no method to determine
       return true;

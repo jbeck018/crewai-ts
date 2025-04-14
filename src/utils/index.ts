@@ -37,3 +37,6 @@ export * from './taskQueue.js';
 
 // Memory management system
 export * from './memory.js';
+
+// Re-export specific types
+export type { EventHandler } from './events.js';

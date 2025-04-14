@@ -127,19 +127,30 @@ export async function mapLimit<T, R>(
   // Process remaining items as others complete
   while (inProgress.size > 0) {
     // Wait for one promise to complete
-    const completedPromise = await Promise.race(
-      Array.from(inProgress).map(p => p.then(() => p))
+    // Use a different approach to avoid void type issues
+    // Define proper interfaces for the result types
+    type SuccessResult = { promise: Promise<any>; result: any; isError: false; };
+    type ErrorResult = { promise: Promise<any>; error: any; isError: true; };
+    type PromiseResult = SuccessResult | ErrorResult;
+    
+    // Map each promise to return itself when resolved with proper typing
+    const promises = Array.from(inProgress).map(p => 
+      p.then(result => ({ promise: p, result, isError: false } as SuccessResult))
+       .catch(error => ({ promise: p, error, isError: true } as ErrorResult))
     );
     
-    // Check if it failed - with proper type checking
-    // Instead of testing for truthiness of a void expression
-    if (completedPromise !== undefined && 
-        completedPromise !== null && 
-        typeof completedPromise === 'object' && 
-        'error' in completedPromise) {
-      // Safe to access error property since we checked it exists
-      throw (completedPromise as {error: any; index: number}).error;
+    // Now race will return an object with the promise and its result/error
+    const completed = await Promise.race(promises) as PromiseResult;
+    
+    // Handle the completed promise in a type-safe way
+    // Use type guard pattern that TypeScript understands
+    if (completed.isError === true) {
+      // With the discriminated union pattern, TypeScript knows this is ErrorResult
+      throw completed.error;
     }
+    
+    // Remove the completed promise from the set
+    inProgress.delete(completed.promise);
     
     // Start a new task if there are more items
     if (nextIndex < items.length) {

@@ -478,28 +478,72 @@ export class FileStorageAdapter extends BaseStorageAdapter {
   }
   
   /**
-   * Helper: Clean up old backups
+   * Helper: Clean up old backups with memory optimized implementation
+   * @param filePath Path to the file for which to clean up backups
    */
   private async cleanupBackups(filePath: string): Promise<void> {
+    // Early validation to ensure string integrity
+    if (typeof filePath !== 'string' || filePath.trim().length === 0) {
+      return; // Skip cleanup for invalid paths
+    }
+    
     try {
       const dirPath = path.dirname(filePath);
       const baseName = path.basename(filePath);
       const files = await fs.readdir(dirPath);
       
-      // Find all backups of this file
-      const backups = files
-        .filter(file => file.startsWith(`${baseName}.`) && file.endsWith('.bak'))
-        .map(file => ({
-          name: file,
-          path: path.join(dirPath, file),
-          timestamp: parseInt(file.split('.')[1], 10)
-        }))
+      // Process valid file entries with explicit type safety for compiler optimization
+      const backups: Array<{name: string; path: string; timestamp: number}> = files
+        // Only process valid file names to avoid undefined values
+        .filter((file): file is string => {
+          return typeof file === 'string' && file.startsWith(`${baseName}.`) && file.endsWith('.bak');
+        })
+        .map(file => {
+          // Type-safe path computation with memory-optimized string handling
+          // Path.join will never return undefined when given valid strings - explicit assertion for compiler
+          // Cast to string explicitly for compiler - path.join always returns a string when given strings
+          const filePath: string = path.join(dirPath, file);
+          // Safely extract timestamp with error handling
+          let timestamp = 0;
+          try {
+            const parts = file.split('.');
+            // Ensure array index is valid before accessing with explicit boundary check
+            if (parts.length > 1 && parts[1] !== undefined) {
+              // Parse with radix for performance and predictability
+              timestamp = parseInt(parts[1], 10);
+            }
+          } catch (e) {
+            // Graceful fallback for parsing errors
+            timestamp = 0;
+          }
+          
+          // Return with explicit type annotation for the entire object - compiler optimization
+          return {
+            name: file,
+            path: filePath,
+            timestamp: timestamp
+          };
+        })
         .sort((a, b) => b.timestamp - a.timestamp); // Sort newest first
       
-      // Keep only the newest maxBackups
+      // Keep only the newest maxBackups with optimized deletion logic
       if (backups.length > this.maxBackups) {
-        for (let i = this.maxBackups; i < backups.length; i++) {
-          await fs.unlink(backups[i].path);
+        // Get the paths to delete with proper type validation
+        const pathsToDelete = backups
+          .slice(this.maxBackups)
+          .map(backup => backup.path)
+          .filter(path => typeof path === 'string' && path.length > 0);
+        
+        // Delete each backup file with guaranteed string paths
+        for (const pathToDelete of pathsToDelete) {
+          try {
+            await fs.unlink(pathToDelete);
+          } catch (unlinkError) {
+            // Handle unlink errors silently for robustness
+            if (this.options.debug) {
+              console.warn(`Failed to delete backup: ${pathToDelete}`, unlinkError);
+            }
+          }
         }
       }
     } catch (error) {
@@ -511,25 +555,57 @@ export class FileStorageAdapter extends BaseStorageAdapter {
   }
   
   /**
-   * Helper: Get the file path for a single file storage
+   * Helper: Get the file path for a single file storage with memory optimization
+   * @returns A guaranteed string path to the storage file
    */
   private getSingleFilePath(): string {
-    return path.join(this.directory, `${this.options.namespace}.json`);
+    // Ensure namespace is always a valid string for type safety
+    const namespace = this.options?.namespace || 'default';
+    return path.join(this.directory, `${namespace}.json`);
   }
   
   /**
-   * Helper: Get the file path for a multi-file key
+   * Helper: Get the file path for a multi-file key with type safety
+   * @param key The key to generate a file path for
+   * @returns A guaranteed string path to the key's file
    */
   private getFilePath(key: string): string {
-    // Encode key to prevent invalid filesystem characters
-    const encodedKey = encodeURIComponent(key);
-    return path.join(this.directory, `${this.options.namespace}-${encodedKey}.json`);
+    // Validate key is a non-empty string for type safety
+    if (typeof key !== 'string' || key.trim().length === 0) {
+      throw new TypeError('Key must be a non-empty string');
+    }
+    
+    // Ensure directory is initialized
+    if (typeof this.directory !== 'string' || this.directory.trim().length === 0) {
+      throw new Error('Storage directory not properly initialized');
+    }
+    
+    // Ensure namespace is always a valid string for type safety
+    const namespace = this.options?.namespace || 'default';
+    
+    // Encode key to prevent invalid filesystem characters with error handling
+    let encodedKey = '';
+    try {
+      encodedKey = encodeURIComponent(key);
+    } catch (e) {
+      // Fallback to a safe representation if encoding fails
+      encodedKey = Buffer.from(key).toString('base64');
+    }
+    
+    return path.join(this.directory, `${namespace}-${encodedKey}.json`);
   }
   
   /**
-   * Helper: Check if a file exists
+   * Helper: Check if a file exists with memory-optimized implementation
+   * @param filePath Path to check for existence
+   * @returns boolean indicating if file exists
    */
   private async fileExists(filePath: string): Promise<boolean> {
+    // Validate path is a non-empty string for type safety
+    if (typeof filePath !== 'string' || filePath.trim().length === 0) {
+      return false; // Invalid path cannot exist
+    }
+    
     try {
       await fs.access(filePath);
       return true;

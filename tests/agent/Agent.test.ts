@@ -1,10 +1,9 @@
-import { describe, test, expect, beforeEach, afterEach, vi } from 'vitest';
 /**
  * Agent class tests
  * Optimized for efficient test execution and comprehensive coverage
  */
 
-import { describe, test, expect, beforeEach, afterEach, mock } from '../vitest-utils.js';
+import { describe, test, expect, beforeEach, afterEach, vi } from '../vitest-utils.js';
 import '../types';
 import { Agent } from '../../src/agent/Agent';
 import { Task } from '../../src/task/Task';
@@ -73,9 +72,9 @@ describe('Agent', () => {
       agent: agent
     });
 
-    // Mock the agent executor
+    // Mock the agent executor using vi.fn() directly for better compatibility
     const mockExecutor = {
-      invoke: mock(() => Promise.resolve({ output: 'Task executed successfully' }))
+      invoke: vi.fn().mockResolvedValue({ output: 'Task executed successfully' })
     };
     
     // Inject the mock executor

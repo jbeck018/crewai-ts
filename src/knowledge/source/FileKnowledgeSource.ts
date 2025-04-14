@@ -14,6 +14,9 @@ import { KnowledgeChunk, Metadata } from '../types.js';
 /**
  * Options specific to file knowledge sources
  */
+// Define a more specific type for the filePath property
+type FilePathType = string;
+
 export interface FileKnowledgeSourceOptions extends KnowledgeSourceOptions {
   /**
    * Path to the file(s) to load
@@ -73,7 +76,16 @@ export class FileKnowledgeSource extends BaseKnowledgeSource {
    * Configured file options with defaults
    * @private
    */
-  private fileOptions: Required<Omit<FileKnowledgeSourceOptions, keyof KnowledgeSourceOptions>>;
+  private fileOptions: {
+    // Explicitly define all fields with their proper types
+    filePath: string;
+    encoding: BufferEncoding;
+    autoDetectType: boolean;
+    recursive: boolean;
+    includedExtensions: string[];
+    maxFileSize: number;
+    metadata?: Metadata;
+  };
 
   /**
    * Constructor for FileKnowledgeSource
@@ -103,18 +115,28 @@ export class FileKnowledgeSource extends BaseKnowledgeSource {
 
     // Convert single file path to array for consistent processing
     if (Array.isArray(options.filePath)) {
-      this.filePaths = options.filePath;
+      this.filePaths = options.filePath.filter(Boolean); // Filter out any falsy values
     } else if (typeof options.filePath === 'string') {
       this.filePaths = [options.filePath];
     } else {
+      // Default to empty array but throw error for invalid input
       this.filePaths = [];
       throw new Error('Invalid filePath: must be a string or array of strings');
     }
+    
+    // Ensure we always have at least an empty array
+    if (!this.filePaths.length) {
+      this.filePaths = [];
+    }
 
     // Set default options with proper type safety
+    // Create a definite non-undefined string value for filePath
+    const defaultFilePath = this.filePaths.length > 0 ? this.filePaths[0] : 'empty-path';
+    
+    // Type assertion to ensure TypeScript knows this is a string
     this.fileOptions = {
-      filePath: this.filePaths.length > 0 ? this.filePaths[0] : '', // Ensure we always have a string
-      encoding: options.encoding || 'utf-8',
+      filePath: defaultFilePath as string, // Ensure we always have a valid string
+      encoding: (options.encoding !== undefined) ? options.encoding : 'utf-8',
       autoDetectType: options.autoDetectType !== false,
       recursive: options.recursive || false,
       includedExtensions: Array.isArray(options.includedExtensions) ? options.includedExtensions : ['.txt', '.md', '.html', '.pdf', '.csv', '.json'],

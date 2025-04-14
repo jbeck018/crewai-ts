@@ -71,10 +71,17 @@ class LRUCache<K, V> {
   }
 
   set(key: K, value: V): void {
-    // If cache is at capacity, remove least recently used item
+    // If cache is at capacity, remove least recently used item with optimized type safety
     if (this.cache.size >= this.maxSize) {
-      const lruKey = this.cache.keys().next().value;
-      this.cache.delete(lruKey);
+      // Handle potential undefined value with explicit type checks for memory optimization
+      const iterator = this.cache.keys();
+      const next = iterator.next();
+      
+      // Verify that the iterator has a value before attempting to delete
+      if (!next.done && next.value !== undefined) {
+        const lruKey = next.value;
+        this.cache.delete(lruKey);
+      }
     }
     
     this.cache.set(key, { value, timestamp: Date.now() });

@@ -115,7 +115,7 @@ export class EmbedderFactory {
    */
   createCohereEmbedder(options: Partial<CohereEmbedderOptions> = {}): CohereEmbedder {
     return new CohereEmbedder({
-      apiKey: options.apiKey || this.options.apiKeys.cohere,
+      apiKey: options.apiKey || this.options.apiKeys.cohere || '',
       model: options.model || 'embed-english-v3.0',
       dimensions: options.dimensions || 1024,
       cacheSize: options.cacheSize || this.options.defaultCacheSize,
@@ -150,6 +150,7 @@ export class EmbedderFactory {
   createFastEmbedder(options: Partial<FastEmbedderOptions> = {}): FastEmbedder {
     return new FastEmbedder({
       model: options.model || 'BAAI/bge-small-en',
+      modelPath: options.modelPath || '',
       dimensions: options.dimensions || 384,
       cacheSize: options.cacheSize || this.options.defaultCacheSize,
       cacheTTL: options.cacheTTL || this.options.defaultCacheTTL,
@@ -165,7 +166,8 @@ export class EmbedderFactory {
    */
   createFastTextEmbedder(options: Partial<FastTextEmbedderOptions> = {}): FastTextEmbedder {
     return new FastTextEmbedder({
-      model: options.model || 'cc.en.300.bin',
+      model: options.model || 'cc.en.300',
+      modelPath: options.modelPath || '',
       dimensions: options.dimensions || 300,
       cacheSize: options.cacheSize || this.options.defaultCacheSize,
       cacheTTL: options.cacheTTL || this.options.defaultCacheTTL,

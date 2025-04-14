@@ -241,21 +241,33 @@ export class IncrementalMemoryLoader<T> {
     
     if (startPage === endPage) {
       // Range is within a single page
-      return pages[0].slice(startIndexInPage, endIndexInPage + 1);
+      const page = pages[0];
+      if (!page) {
+        return [];
+      }
+      return page.slice(startIndexInPage, endIndexInPage + 1);
     } else {
       // Range spans multiple pages
       const result: T[] = [];
       
       // First page (partial)
-      result.push(...pages[0].slice(startIndexInPage));
+      if (pages[0]) {
+        result.push(...pages[0].slice(startIndexInPage));
+      }
       
       // Middle pages (complete)
       for (let i = 1; i < pages.length - 1; i++) {
-        result.push(...pages[i]);
+        const page = pages[i];
+        if (page) {
+          result.push(...page);
+        }
       }
       
       // Last page (partial)
-      result.push(...pages[pages.length - 1].slice(0, endIndexInPage + 1));
+      const lastPage = pages[pages.length - 1];
+      if (lastPage) {
+        result.push(...lastPage.slice(0, endIndexInPage + 1));
+      }
       
       return result;
     }
@@ -317,7 +329,9 @@ export class IncrementalMemoryLoader<T> {
       const allPages = Array.from(this.pageCache.keys());
       
       // Calculate distance from window center for each page
-      const windowCenter = (this.windowStart + this.windowEnd) / 2;
+      const windowStart = this.windowStart || 0;
+      const windowEnd = this.windowEnd || 0;
+      const windowCenter = (windowStart + windowEnd) / 2;
       const pagesWithDistance = allPages.map(pageIndex => {
         return {
           pageIndex,
@@ -330,7 +344,10 @@ export class IncrementalMemoryLoader<T> {
       
       for (let i = 0; i < numToEvict; i++) {
         if (i < pagesWithDistance.length) {
-          this.evictPage(pagesWithDistance[i].pageIndex);
+          const pageInfo = pagesWithDistance[i];
+          if (pageInfo) {
+            this.evictPage(pageInfo.pageIndex);
+          }
         }
       }
     }

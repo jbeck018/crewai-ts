@@ -4,6 +4,14 @@
  */
 import { Command } from '../Command.js';
 
+// Define proper types for memory optimization
+interface TaskOutput {
+  taskId: string;
+  expectedOutput?: string;
+  result?: unknown;
+  [key: string]: unknown;
+}
+
 export class LogTasksOutputsCommand extends Command {
   readonly name = 'log-tasks-outputs';
   readonly description = 'Retrieve your latest crew.kickoff() task outputs';
@@ -22,7 +30,7 @@ export class LogTasksOutputsCommand extends Command {
       
       // Load the task outputs with memory-efficient approach
       const storage = new KickoffTaskOutputsStorage();
-      const tasks = await storage.loadAll();
+      const tasks = await storage.loadAll() as TaskOutput[];
       
       if (!tasks || tasks.length === 0) {
         console.log(chalk.yellow('No task outputs found. Only crew kickoff task outputs are logged.'));
@@ -31,11 +39,19 @@ export class LogTasksOutputsCommand extends Command {
       
       console.log(chalk.bold('\nLatest Crew Kickoff Task Outputs:\n'));
       
-      // Use memory-efficient iteration and minimal string operations
+      // Use memory-efficient iteration with null-safety
       for (let i = 0; i < tasks.length; i++) {
-        const task = tasks[i];
-        console.log(chalk.cyan(`Task ${i + 1}: ${task.taskId}`));
-        console.log(`Description: ${task.expectedOutput}`);
+        const task = tasks[i] as TaskOutput | undefined;
+        
+        // Skip undefined tasks for memory safety
+        if (!task) continue;
+        
+        // Use optional chaining and nullish coalescing for type safety
+        const taskId = task.taskId || `Task-${i}`;
+        const description = task.expectedOutput ?? 'No description available';
+        
+        console.log(chalk.cyan(`Task ${i + 1}: ${taskId}`));
+        console.log(`Description: ${description}`);
         console.log(chalk.dim('------'));
       }
       

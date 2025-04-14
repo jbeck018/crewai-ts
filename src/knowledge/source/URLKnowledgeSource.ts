@@ -119,6 +119,7 @@ export class URLKnowledgeSource extends BaseKnowledgeSource {
     includeSelectors: string[];
     excludeSelectors: string[];
     restrictToDomains: string[];
+    headers: Record<string, string>;
   };
 
   /**
@@ -147,7 +148,7 @@ export class URLKnowledgeSource extends BaseKnowledgeSource {
     this.urls = Array.isArray(options.url) 
       ? options.url.filter(Boolean) // Filter out any undefined or null values
       : (options.url ? [options.url] : []);
-    
+      
     // Ensure we have at least one URL for type safety
     if (this.urls.length === 0) {
       this.urls = ['placeholder-url'];
@@ -156,11 +157,13 @@ export class URLKnowledgeSource extends BaseKnowledgeSource {
 
     // Set default options with safe fallbacks for type safety
     // Ensure the url field is properly assigned with a valid string value
-    const defaultUrl: string = this.urls.length > 0 ? this.urls[0] : 'default-url';
+    // We've already ensured this.urls has at least one element
+    // Ensure we have a valid URL string with fallback
+    const defaultUrl = (this.urls && this.urls.length > 0) ? this.urls[0] : 'empty-url';
     
     this.urlOptions = {
-      url: defaultUrl, // Safe string value assigned directly for type compatibility
-      headers: options.headers || {},
+      url: defaultUrl || 'empty-url', // Ensure we always have a valid string value
+      headers: options.headers ?? {},
       enableCaching: options.enableCaching !== false,
       cacheTTL: options.cacheTTL || 3600000, // 1 hour default
       followDepth: options.followDepth || 0,

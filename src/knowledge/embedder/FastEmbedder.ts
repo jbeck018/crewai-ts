@@ -12,16 +12,40 @@ import { BaseEmbedder, BaseEmbedderOptions } from './BaseEmbedder.js';
  */
 export interface FastEmbedderOptions extends BaseEmbedderOptions {
   /**
+   * Model name
+   */
+  model: string;
+
+  /**
+   * Model path
+   */
+  modelPath: string;
+
+  /**
+   * Dimensions of the embeddings
+   */
+  dimensions: number;
+
+  /**
+   * Maximum sequence length
+   */
+  maxLength?: number;
+
+  /**
+   * Whether to use average pooling
+   */
+  useAveragePooling?: boolean;
+
+  /**
+   * Request timeout in milliseconds
+   */
+  timeout?: number;
+
+  /**
    * Path to the model cache directory
    * @default 'node_modules/.cache/fastembed'
    */
   cacheDir?: string;
-
-  /**
-   * Maximum text length to process
-   * @default 512
-   */
-  maxLength?: number;
 
   /**
    * Use multilingual model
@@ -56,7 +80,7 @@ declare global {
  * Efficient local embeddings with minimal resource usage
  * Uses fastembed library for optimized performance
  */
-export class FastEmbedder extends BaseEmbedder {
+export class FastEmbedder extends BaseEmbedder<FastEmbedderOptions> {
   /**
    * FastEmbed model instance (lazy loaded)
    */
@@ -98,18 +122,54 @@ export class FastEmbedder extends BaseEmbedder {
   private internalBatchSize: number;
 
   /**
+   * Model path
+   */
+  protected _modelPath: string;
+
+  /**
+   * Dimensions of the embeddings
+   */
+  protected _dimensions: number;
+
+  /**
+   * Maximum sequence length
+   */
+  protected _maxLength: number;
+
+  /**
+   * Whether to use average pooling
+   */
+  protected _useAveragePooling: boolean;
+
+  /**
+   * Request timeout in milliseconds
+   */
+  protected _timeout: number;
+
+  /**
+   * Model instance
+   */
+  protected _modelInstance: any;
+
+  /**
    * Constructor for FastEmbedder
    */
-  constructor(options: FastEmbedderOptions = {}) {
+  constructor(options: FastEmbedderOptions) {
     // Set provider to fastembed
-    super({
-      ...options,
-      provider: 'fastembed',
-      // Default model if not specified
-      model: options.model || 'BAAI/bge-small-en',
-      // Set dimensions based on model
-      dimensions: options.dimensions || 384
-    });
+    super(options);
+    if (!options.model) {
+      throw new Error('Model is required for FastEmbedder');
+    }
+    if (!options.modelPath) {
+      throw new Error('Model path is required for FastEmbedder');
+    }
+    this._model = options.model;
+    this._modelPath = options.modelPath;
+    this._dimensions = options.dimensions;
+    this._maxLength = options.maxLength || 512;
+    this._useAveragePooling = options.useAveragePooling || true;
+    this._timeout = options.timeout || 30000;
+    this._modelInstance = null;
 
     // Set model options
     this.multilingual = options.multilingual || false;
@@ -126,20 +186,20 @@ export class FastEmbedder extends BaseEmbedder {
     });
   }
 
-  /**
-   * Initialize the FastEmbed model
-   * @returns Promise resolving when model is loaded
-   */
-  private async initializeModel(): Promise<void> {
-    // Return existing initialization if in progress
-    if (this.initializationPromise) {
-      return this.initializationPromise;
-    }
+  // /**
+  //  * Initialize the FastEmbed model
+  //  * @returns Promise resolving when model is loaded
+  //  */
+  // private async initializeModel(): Promise<void> {
+  //   // Return existing initialization if in progress
+  //   if (this.initializationPromise) {
+  //     return this.initializationPromise;
+  //   }
 
-    // Create new initialization promise
-    this.initializationPromise = this._initializeModel();
-    return this.initializationPromise;
-  }
+  //   // Create new initialization promise
+  //   this.initializationPromise = this._initializeModel();
+  //   return this.initializationPromise;
+  // }
 
   /**
    * Internal initialization logic
@@ -190,128 +250,103 @@ export class FastEmbedder extends BaseEmbedder {
     }
   }
 
-  /**
-   * Embed text using FastEmbed
-   * @param text Text to embed
-   * @returns Promise resolving to Float32Array of embeddings
-   */
-  protected async embedText(text: string): Promise<Float32Array> {
-    try {
-      // Ensure model is initialized
-      if (!this.modelReady) {
-        await this.initializeModel();
-        if (!this.modelReady) {
-          throw new Error('Failed to initialize FastEmbed model');
-        }
-      }
-
-      // Generate embedding
-      const embeddings = await this.model.embed(text);
-      
-      if (!embeddings || !embeddings[0]) {
-        throw new Error('FastEmbed returned empty embedding');
-      }
-
-      // Convert to Float32Array
-      const float32Embedding = new Float32Array(embeddings[0]);
-      
-      return this.options.normalize 
-        ? this.normalizeVector(float32Embedding)
-        : float32Embedding;
-    } catch (error) {
-      // Enhance error with helpful context
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      throw new Error(`FastEmbed embedding failed: ${errorMessage}`);
+  public override async embed(text: string): Promise<Float32Array> {
+    if (!text) {
+      throw new Error('Text is required for embedding');
     }
+
+    const embedding = await this.executeWithRetry(async () => {
+      const result = await this.embedText(text);
+      return result;
+    });
+
+    return this.options.normalize ? this.normalizeVector(embedding) : embedding;
   }
 
-  /**
-   * Override batch embedding to use FastEmbed's native batching for better performance
-   * @param texts Array of texts to embed
-   * @returns Promise resolving to array of Float32Array embeddings
-   */
-  override async embedBatch(texts: string[]): Promise<Float32Array[]> {
-    // Filter empty texts
-    const validTexts = texts.filter(text => text && text.trim() !== '');
-    
-    if (validTexts.length === 0) {
-      if (this.options.debug) {
-        console.warn('No valid texts provided for batch embedding');
-      }
+  public override async embedBatch(texts: string[]): Promise<Float32Array[]> {
+    if (!texts?.length) {
       return [];
     }
 
-    // Check cache for all texts first
-    const cacheResults: (Float32Array | null)[] = validTexts.map(text => {
-      const cacheKey = this.generateCacheKey(text);
-      return this.getCachedEmbedding(cacheKey);
+    const embeddings = await this.executeBatchWithRetry(async () => {
+      const results = await Promise.all(texts.map(text => this.embedText(text)));
+      return results;
     });
 
-    // If all results are cached, return them
-    if (cacheResults.every(result => result !== null)) {
-      return cacheResults as Float32Array[];
+    return this.options.normalize ? embeddings.map(e => this.normalizeVector(e)) : embeddings;
+  }
+
+  protected override async executeWithRetry<T>(
+    operation: () => Promise<T>,
+    maxRetries?: number,
+    initialBackoff?: number,
+    maxBackoff?: number
+  ): Promise<T> {
+    return await operation();
+  }
+
+  protected override async executeBatchWithRetry<T>(
+    operation: () => Promise<T>,
+    maxRetries?: number,
+    initialBackoff?: number,
+    maxBackoff?: number
+  ): Promise<T> {
+    return await operation();
+  }
+
+  protected override isTransientError(error: Error): boolean {
+    const message = error.message.toLowerCase();
+    return (
+      message.includes('timeout') ||
+      message.includes('network error') ||
+      message.includes('connection') ||
+      message.includes('rate limit') ||
+      message.includes('429') ||
+      message.includes('500') ||
+      message.includes('503')
+    );
+  }
+
+  protected override async embedText(text: string): Promise<Float32Array> {
+    if (!text) {
+      if (this.options.debug) {
+        console.warn('Empty text provided for embedding, returning zero vector');
+      }
+      return new Float32Array(this._dimensions);
     }
 
-    // Find texts that need embedding
-    const textsToEmbed: { text: string; index: number }[] = validTexts
-      .map((text, index) => ({ text, index }))
-      .filter((item, index) => cacheResults[index] === null);
+    const cacheKey = this.generateCacheKey(text);
+    const cached = this.getCachedEmbedding(cacheKey);
+    if (cached) {
+      return cached;
+    }
 
     try {
-      // Ensure model is initialized
-      if (!this.modelReady) {
+      if (!this._modelInstance) {
         await this.initializeModel();
-        if (!this.modelReady) {
-          throw new Error('Failed to initialize FastEmbed model');
-        }
       }
 
-      // Extract texts for embedding
-      const justTexts = textsToEmbed.map(item => item.text);
-
-      // Use native batch embedding for optimal performance
-      const embeddings = await this.model.embed(justTexts);
-
-      // Process results and cache them
-      const batchResults: { index: number; embedding: Float32Array }[] = textsToEmbed.map((item, i) => {
-        const embedding = new Float32Array(embeddings[i]);
-        const normalizedEmbedding = this.options.normalize 
-          ? this.normalizeVector(embedding)
-          : embedding;
-        
-        // Cache the result
-        this.cacheEmbedding(this.generateCacheKey(item.text), normalizedEmbedding);
-        
-        return {
-          index: item.index,
-          embedding: normalizedEmbedding
-        };
-      });
-
-      // Combine cached and new results
-      const combinedResults: Float32Array[] = new Array(validTexts.length);
-      
-      // Add cached results
-      cacheResults.forEach((result, index) => {
-        if (result !== null) {
-          combinedResults[index] = result;
-        }
-      });
-      
-      // Add new results
-      batchResults.forEach(result => {
-        combinedResults[result.index] = result.embedding;
-      });
-
-      return combinedResults;
+      const embedding = await this._modelInstance.embed(text);
+      this.cache.set(cacheKey, embedding);
+      return embedding;
     } catch (error) {
-      // Fall back to individual processing if batch fails
-      if (this.options.debug) {
-        console.error('Error in batch embedding, falling back to individual embedding:', error);
-      }
+      console.error('Fast embedding failed:', error);
+      return new Float32Array(this._dimensions);
+    }
+  }
+
+  private async initializeModel(): Promise<void> {
+    try {
+      // Load the model
+      const model = await import(this._modelPath);
+      this._modelInstance = model[this._model];
       
-      // Use super.embedBatch as fallback
-      return super.embedBatch(texts);
+      if (this.options.debug) {
+        console.log(`Loaded model: ${this._model}`);
+      }
+    } catch (error) {
+      console.error('Failed to initialize model:', error);
+      throw error;
     }
   }
 }

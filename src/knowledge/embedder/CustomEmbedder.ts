@@ -12,21 +12,36 @@ import { BaseEmbedder, BaseEmbedderOptions } from './BaseEmbedder.js';
  */
 export interface CustomEmbedderOptions extends BaseEmbedderOptions {
   /**
-   * Required custom embedding function
-   * Must be provided for CustomEmbedder to work
+   * Embedding function to use
    */
-  embeddingFunction: (text: string) => Promise<number[]>;
+  embeddingFunction: (text: string) => Promise<Float32Array>;
 
   /**
-   * Optional batch embedding function for improved performance
-   * If not provided, the single embedding function will be used in sequence
+   * Model name
    */
-  batchEmbeddingFunction?: (texts: string[]) => Promise<number[][]>;
+  model?: string;
 
   /**
-   * Custom error handler for embedding errors
+   * Provider name
    */
-  errorHandler?: (error: Error) => void;
+  provider?: string;
+
+  /**
+   * Cache size
+   * @default 1000
+   */
+  cacheSize?: number;
+
+  /**
+   * Cache TTL in milliseconds
+   * @default 3600000 (1 hour)
+   */
+  cacheTTL?: number;
+
+  /**
+   * Dimensions of the embeddings
+   */
+  dimensions: number;
 }
 
 /**
@@ -35,163 +50,97 @@ export interface CustomEmbedderOptions extends BaseEmbedderOptions {
  * Allows using any embedding function with the standardized interface
  * while benefiting from the optimizations in BaseEmbedder
  */
-export class CustomEmbedder extends BaseEmbedder {
-  /**
-   * Custom embedding function
-   */
-  private embeddingFunction: (text: string) => Promise<number[]>;
+export class CustomEmbedder extends BaseEmbedder<CustomEmbedderOptions> {
+  protected _embeddingFunction: (text: string) => Promise<Float32Array>;
+  protected _dimensions: number;
 
-  /**
-   * Custom batch embedding function (optional)
-   */
-  private batchEmbeddingFunction?: (texts: string[]) => Promise<number[][]>;
-
-  /**
-   * Custom error handler
-   */
-  private errorHandler?: (error: Error) => void;
-
-  /**
-   * Constructor for CustomEmbedder
-   */
   constructor(options: CustomEmbedderOptions) {
-    // Set provider to custom
-    super({
-      ...options,
-      provider: 'custom'
+    super(options);
+    if (!options.embeddingFunction) {
+      throw new Error('Embedding function is required for CustomEmbedder');
+    }
+    this._embeddingFunction = options.embeddingFunction;
+    this._dimensions = options.dimensions;
+  }
+
+  public override async embed(text: string): Promise<Float32Array> {
+    if (!text) {
+      throw new Error('Text is required for embedding');
+    }
+
+    const embedding = await this.executeWithRetry(async () => {
+      const result = await this.embedText(text);
+      return result;
     });
 
-    // Ensure embedding function is provided
-    if (!options.embeddingFunction) {
-      throw new Error('Custom embedding function is required for CustomEmbedder');
-    }
-
-    // Set embedding function
-    this.embeddingFunction = options.embeddingFunction;
-    
-    // Set optional batch function if provided
-    this.batchEmbeddingFunction = options.batchEmbeddingFunction;
-    
-    // Set optional error handler
-    this.errorHandler = options.errorHandler;
+    return this.options.normalize ? this.normalizeVector(embedding) : embedding;
   }
 
-  /**
-   * Embed text using the custom embedding function
-   * @param text Text to embed
-   * @returns Promise resolving to Float32Array of embeddings
-   */
-  protected async embedText(text: string): Promise<Float32Array> {
+  public override async embedBatch(texts: string[]): Promise<Float32Array[]> {
+    if (!texts?.length) {
+      return [];
+    }
+
+    const embeddings = await this.executeBatchWithRetry(async () => {
+      const results = await Promise.all(texts.map(text => this.embedText(text)));
+      return results;
+    });
+
+    return this.options.normalize ? embeddings.map(e => this.normalizeVector(e)) : embeddings;
+  }
+
+  protected override async executeWithRetry<T>(
+    operation: () => Promise<T>,
+    maxRetries?: number,
+    initialBackoff?: number,
+    maxBackoff?: number
+  ): Promise<T> {
+    return await operation();
+  }
+
+  protected override async executeBatchWithRetry<T>(
+    operation: () => Promise<T>,
+    maxRetries?: number,
+    initialBackoff?: number,
+    maxBackoff?: number
+  ): Promise<T> {
+    return await operation();
+  }
+
+  protected override isTransientError(error: Error): boolean {
+    const message = error.message.toLowerCase();
+    return (
+      message.includes('timeout') ||
+      message.includes('network error') ||
+      message.includes('connection') ||
+      message.includes('rate limit') ||
+      message.includes('429') ||
+      message.includes('500') ||
+      message.includes('503')
+    );
+  }
+
+  protected override async embedText(text: string): Promise<Float32Array> {
+    if (!text) {
+      if (this.options.debug) {
+        console.warn('Empty text provided for embedding, returning zero vector');
+      }
+      return new Float32Array(this._dimensions);
+    }
+
+    const cacheKey = this.generateCacheKey(text);
+    const cached = this.getCachedEmbedding(cacheKey);
+    if (cached) {
+      return cached;
+    }
+
     try {
-      // Use the provided embedding function
-      const embedding = await this.embeddingFunction(text);
-
-      // Convert to Float32Array
-      const float32Embedding = new Float32Array(embedding);
-      
-      return this.options.normalize 
-        ? this.normalizeVector(float32Embedding)
-        : float32Embedding;
+      const embedding = await this._embeddingFunction(text);
+      this.cache.set(cacheKey, embedding);
+      return embedding;
     } catch (error) {
-      // Use custom error handler if provided
-      if (this.errorHandler && error instanceof Error) {
-        this.errorHandler(error);
-      }
-
-      // Enhance error with helpful context
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      throw new Error(`Custom embedding failed: ${errorMessage}`);
+      console.error('Custom embedding failed:', error);
+      return new Float32Array(this._dimensions);
     }
-  }
-
-  /**
-   * Override batch embedding to use custom batch function if available
-   * @param texts Array of texts to embed
-   * @returns Promise resolving to array of Float32Array embeddings
-   */
-  override async embedBatch(texts: string[]): Promise<Float32Array[]> {
-    // If batch function is available and texts need embedding, use it
-    if (this.batchEmbeddingFunction) {
-      try {
-        // Filter empty texts
-        const validTexts = texts.filter(text => text && text.trim() !== '');
-        
-        if (validTexts.length === 0) {
-          if (this.options.debug) {
-            console.warn('No valid texts provided for batch embedding');
-          }
-          return [];
-        }
-
-        // Check cache for all texts first
-        const cacheResults: (Float32Array | null)[] = validTexts.map(text => {
-          const cacheKey = this.generateCacheKey(text);
-          return this.getCachedEmbedding(cacheKey);
-        });
-
-        // If all results are cached, return them
-        if (cacheResults.every(result => result !== null)) {
-          return cacheResults as Float32Array[];
-        }
-
-        // Find texts that need embedding
-        const textsToEmbed: { text: string; index: number }[] = validTexts
-          .map((text, index) => ({ text, index }))
-          .filter((item, index) => cacheResults[index] === null);
-
-        // Use custom batch function for uncached texts
-        const justTexts = textsToEmbed.map(item => item.text);
-        const batchEmbeddings = await this.batchEmbeddingFunction(justTexts);
-
-        // Process and cache results
-        const batchResults: { index: number; embedding: Float32Array }[] = textsToEmbed.map((item, i) => {
-          // Ensure we have a valid embedding before creating Float32Array
-          const embeddingData = batchEmbeddings[i] || [];
-          const embedding = new Float32Array(embeddingData);
-          const normalizedEmbedding = this.options.normalize 
-            ? this.normalizeVector(embedding)
-            : embedding;
-          
-          // Cache the result
-          this.cacheEmbedding(this.generateCacheKey(item.text), normalizedEmbedding);
-          
-          return {
-            index: item.index,
-            embedding: normalizedEmbedding
-          };
-        });
-
-        // Combine cached and new results
-        const combinedResults: Float32Array[] = new Array(validTexts.length);
-        
-        // Add cached results
-        cacheResults.forEach((result, index) => {
-          if (result !== null) {
-            combinedResults[index] = result;
-          }
-        });
-        
-        // Add new results
-        batchResults.forEach(result => {
-          combinedResults[result.index] = result.embedding;
-        });
-
-        return combinedResults;
-      } catch (error) {
-        // Use custom error handler if provided
-        if (this.errorHandler && error instanceof Error) {
-          this.errorHandler(error);
-        }
-
-        if (this.options.debug) {
-          console.error('Error in custom batch embedding, falling back to individual embedding:', error);
-        }
-        
-        // Fall back to individual processing on error
-      }
-    }
-    
-    // Use the base implementation if no batch function or batch failed
-    return super.embedBatch(texts);
   }
 }

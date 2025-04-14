@@ -68,7 +68,9 @@ export interface ContentReference {
  * A bloom filter allows quickly determining if an item is definitely NOT in a set
  * with no false negatives (but possible false positives)
  */
+// Use a more TypeScript-friendly implementation with proper initialization
 class BloomFilter {
+  // Define properties with explicit initialization
   private bits: Uint8Array;
   private hashFunctions: number;
   private size: number;
@@ -77,38 +79,64 @@ class BloomFilter {
     this.size = size;
     this.bits = new Uint8Array(Math.ceil(size / 8));
     this.hashFunctions = hashFunctions;
+    
+    // Ensure bits is always initialized
+    if (!this.bits) {
+      this.bits = new Uint8Array(Math.ceil(this.size / 8));
+    }
   }
   
   add(item: string): void {
+    // Ensure bits array is initialized before use
+    if (!this.bits || this.bits.length === 0) {
+      this.bits = new Uint8Array(Math.ceil(this.size / 8));
+    }
+    
     const positions = this.getPositions(item);
+    // Use type assertion to satisfy TypeScript
+    const bits = this.bits as Uint8Array;
+    
     for (const pos of positions) {
       const byteIndex = Math.floor(pos / 8);
       // Add bounds check to ensure byteIndex is valid
-      if (byteIndex >= 0 && byteIndex < this.bits.length) {
+      if (byteIndex >= 0 && byteIndex < bits.length) {
         const bitIndex = pos % 8;
-        this.bits[byteIndex] |= (1 << bitIndex);
+        bits[byteIndex] |= (1 << bitIndex);
       }
     }
   }
   
   contains(item: string): boolean {
+    // Ensure bits array is initialized before use
+    if (!this.bits || this.bits.length === 0) {
+      return false; // Empty filter never contains anything
+    }
+    
     const positions = this.getPositions(item);
+    // Use type assertion to satisfy TypeScript
+    const bitsArray = this.bits as Uint8Array;
+    
     for (const pos of positions) {
       const byteIndex = Math.floor(pos / 8);
       // Add bounds check to ensure byteIndex is valid
-      if (byteIndex < 0 || byteIndex >= this.bits.length) {
+      if (byteIndex < 0 || byteIndex >= bitsArray.length) {
         return false; // Position out of bounds, so item can't be in set
       }
+      
       const bitIndex = pos % 8;
-      if (!(this.bits[byteIndex] & (1 << bitIndex))) {
+      if (!(bitsArray[byteIndex] & (1 << bitIndex))) {
         return false; // Definitely not in the set
       }
     }
+    
     return true; // Might be in the set
   }
   
   clear(): void {
-    this.bits.fill(0);
+    const bits = this.bits;
+    if (bits) {
+      bits.fill(0);
+    }
   }
   
   // Generate hash positions for an item
@@ -501,12 +529,18 @@ export class DeduplicatedContentStorage {
     const contentParts: string[] = [];
     
     for (const chunkHash of chunkHashes) {
-      const chunkContent = this.contentChunks.get(chunkHash);
-      if (chunkContent) {
-        contentParts.push(chunkContent);
+      // Safe access to contentChunks with null check
+      const contentChunks = this.contentChunks;
+      if (contentChunks) {
+        const chunkContent = contentChunks.get(chunkHash);
+        if (chunkContent) {
+          contentParts.push(chunkContent);
+        } else {
+          // Missing chunk - this shouldn't happen with proper reference counting
+          contentParts.push(`[Missing chunk: ${chunkHash}]`);
+        }
       } else {
-        // Missing chunk - this shouldn't happen with proper reference counting
-        contentParts.push(`[Missing chunk: ${chunkHash}]`);
+        contentParts.push(`[Missing chunk map: ${chunkHash}]`);
       }
     }
     

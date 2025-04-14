@@ -1,739 +1,720 @@
-/**
- * MultiFlowOrchestrator
- * 
- * High-performance orchestration system that integrates all flow orchestration components
- * with advanced optimizations for memory efficiency, execution speed, and resource management.
- */
-
 import { EventEmitter } from 'events';
-import type { Flow, FlowId, FlowState } from '../types.js';
-import { FlowOrchestrator } from './FlowOrchestrator.js';
+import type { FlowMemoryConnectorInterface } from '../memory/FlowMemoryConnectorInterface.js';
+import { FlowOrchestrator, FlowOrchestratorOptions, FlowMetrics, FlowState, ExtendedFlow, FlowExecutionMetrics, FlowVisualizationOptions } from './interfaces/FlowOrchestrator.js';
 import { FlowExecutionTracker } from './FlowExecutionTracker.js';
-import { FlowScheduler, type SchedulerOptions } from './FlowScheduler.js';
-import { FlowDependencyVisualizer, type FlowVisualizationOptions } from './FlowDependencyVisualizer.js';
-import { FlowMemoryConnector } from '../memory/FlowMemoryConnector.js';
+import { Flow, FlowId, FlowNode, FlowStatus } from '../types.js';
+import { FlowData } from '../memory/FlowMemoryConnectorInterface.js';
 
-// Flow definition with optimized metadata
-export interface FlowDefinition<TState extends FlowState = FlowState> {
-  flow: Flow<TState>;
-  id?: FlowId;
-  name?: string;
-  description?: string;
-  priority?: number;
-  tags?: string[];
-  dependencies?: FlowId[];
-  resourceEstimate?: {
-    cpu?: number;
-    memory?: number;
-    io?: number;
-    network?: number;
+export class MultiFlowOrchestrator extends EventEmitter implements FlowOrchestrator {
+  #orchestrators: Map<string, FlowOrchestrator> = new Map();
+  #tracker: FlowExecutionTracker;
+  #options: Required<FlowOrchestratorOptions>;
+  #pendingFlows: Map<string, ExtendedFlow<any, FlowState>> = new Map();
+  #completedFlows: Map<string, ExtendedFlow<any, FlowState>> = new Map();
+  #failedFlows: Map<string, ExtendedFlow<any, FlowState>> = new Map();
+  #currentExecution: {
+    startTime: number;
+    endTime?: number;
+    status: 'running' | 'completed' | 'failed';
+    error?: Error;
+  } = {
+    startTime: 0,
+    endTime: undefined,
+    status: 'running'
   };
-  condition?: (context: any) => boolean | Promise<boolean>;
-  dataMapping?: (upstreamResults: any) => any;
-  metadata?: Record<string, any>;
-  retryConfig?: {
-    maxAttempts: number;
-    backoffFactor: number;
-    initialDelayMs: number;
+  #criticalPath: {
+    flows: string[];
+    time: number;
+  } = { flows: [], time: 0 };
+  #runningFlows: Set<string> = new Set();
+  #flowExecutionTimes: Map<string, number> = new Map();
+  #timeSeriesData: Array<{
+    timestamp: number;
+    metrics: Record<string, number>;
+  }> = [];
+  #errors: Map<string, Error> = new Map();
+  #executionStartTime: number = 0;
+  #executionEndTime?: number;
+  #checkpointTimer?: NodeJS.Timeout;
+  #memoryUsage: {
+    initial: number;
+    peak: number;
+    current: number;
+  } = {
+    initial: 0,
+    peak: 0,
+    current: 0
   };
-}
-
-// Integration options with performance settings
-export interface MultiFlowOrchestratorOptions {
-  /** Performance optimization target */
-  optimizeFor?: 'speed' | 'memory' | 'balanced';
-  
-  /** Enable memory integration */
-  enableMemoryIntegration?: boolean;
-  
-  /** Memory connector */
-  memoryConnector?: FlowMemoryConnector;
-  
-  /** Scheduler options */
-  scheduler?: SchedulerOptions;
-  
-  /** Flow execution settings */
-  execution?: {
-    /** Maximum concurrent flows */
-    maxConcurrency?: number;
-    /** Global flow timeout in milliseconds */
-    timeout?: number;
-    /** Default retry count for failed flows */
-    retryCount?: number;
-    /** Interval to checkpoint execution state */
-    checkpointInterval?: number;
-    /** Use optimistic execution mode */
-    optimisticExecution?: boolean;
-    /** Execution strategy: breadth-first or depth-first */
-    strategy?: 'breadth-first' | 'depth-first';
-  };
-  
-  /** Memory optimization settings */
-  memory?: {
-    /** Aggressively clean up completed flow states */
-    aggressiveCleanup?: boolean;
-    /** Share immutable state between flows when possible */
-    enableStateSharing?: boolean;
-    /** Memory budgets in MB before throttling */
-    budgetMB?: number;
-    /** Compression level for persisted states */
-    compressionLevel?: 'none' | 'fast' | 'high';
-  };
-  
-  /** Metrics and monitoring */
-  metrics?: {
-    /** Enable detailed performance tracking */
-    enableDetailedTracking?: boolean;
-    /** Sample rate for performance metrics */
-    samplingRate?: number;
-    /** Export metrics to console */
-    exportToConsole?: boolean;
-    /** Maximum metrics history size */
-    maxHistorySize?: number;
-  };
-  
-  /** Debug settings */
-  debug?: {
-    /** Enable verbose logging */
-    verbose?: boolean;
-    /** Log level */
-    logLevel?: 'error' | 'warn' | 'info' | 'debug' | 'trace';
-  };
-  
-  /** Visualization settings */
-  visualization?: FlowVisualizationOptions;
-}
-
-// Return type for flow execution
-export interface MultiFlowExecutionResult {
-  results: Map<FlowId, any>;
-  metrics: {
+  #performanceMetrics: {
     totalExecutionTime: number;
-    flowsExecuted: number;
-    flowsSucceeded: number;
-    flowsFailed: number;
-    averageFlowExecutionTime: number;
-    peakMemoryUsageMB: number;
-    criticalPathTime: number;
+    averageFlowTime: number;
+    maxFlowTime: number;
+    minFlowTime: number;
+    flowCount: number;
+    completedFlows: number;
+    failedFlows: number;
+  } = {
+    totalExecutionTime: 0,
+    averageFlowTime: 0,
+    maxFlowTime: 0,
+    minFlowTime: Infinity,
+    flowCount: 0,
+    completedFlows: 0,
+    failedFlows: 0
   };
-  errors?: Map<FlowId, Error>;
-  visualizationPath?: string;
-}
+  #visualizationPath?: string;
+  #visualizationOptions?: FlowVisualizationOptions;
 
-/**
- * MultiFlowOrchestrator integrates the execution tracker, scheduler, visualizer,
- * and memory connector to provide a comprehensive system for orchestrating
- * multiple flows with optimized performance and resource utilization.
- */
-export class MultiFlowOrchestrator extends EventEmitter {
-  private flows: Map<FlowId, FlowDefinition> = new Map();
-  private orchestrator: FlowOrchestrator;
-  private tracker: FlowExecutionTracker;
-  private scheduler: FlowScheduler;
-  private visualizer?: FlowDependencyVisualizer;
-  private memoryConnector?: FlowMemoryConnector;
-  
-  // Performance optimization: in-memory result cache
-  private resultCache: Map<FlowId, any> = new Map();
-  
-  // Track memory usage
-  private initialMemoryUsage: number = 0;
-  private peakMemoryUsage: number = 0;
-  
-  // Track overall execution performance
-  private executionStartTime: number = 0;
-  private executionEndTime?: number;
-  
-  // Keep critical path tracking
-  private criticalPathTime: number = 0;
-  private criticalPathFlows: FlowId[] = [];
-  
-  private options: Required<MultiFlowOrchestratorOptions>;
-  
-  constructor(options: MultiFlowOrchestratorOptions = {}) {
+  constructor(options: Partial<FlowOrchestratorOptions> = {}) {
     super();
-    
-    // Default options with performance-optimized values
-    this.options = {
-      optimizeFor: 'balanced',
-      enableMemoryIntegration: false,
-      memoryConnector: undefined,
-      scheduler: {},
-      execution: {
-        maxConcurrency: navigator?.hardwareConcurrency || 4,
-        timeout: 30000, // 30 seconds
-        retryCount: 3,
-        checkpointInterval: 5000, // 5 seconds
-        optimisticExecution: true,
-        strategy: 'breadth-first'
-      },
-      memory: {
-        aggressiveCleanup: true,
-        enableStateSharing: true,
-        budgetMB: 1024, // 1GB
-        compressionLevel: 'fast'
-      },
-      metrics: {
-        enableDetailedTracking: true,
-        samplingRate: 1.0, // Track everything
-        exportToConsole: false,
-        maxHistorySize: 1000
-      },
-      debug: {
-        verbose: false,
-        logLevel: 'info'
+    this.#orchestrators = new Map();
+    this.#tracker = new FlowExecutionTracker();
+    this.#options = {
+      optimizeFor: options.optimizeFor ?? 'balanced',
+      enableMemoryIntegration: options.enableMemoryIntegration ?? false,
+      memoryConnector: options.memoryConnector ?? new (class implements FlowMemoryConnectorInterface<FlowState> {
+        async saveState(flowId: string, state: FlowState): Promise<void> {
+          // implement save state logic
+        }
+        async loadState(flowId: string): Promise<FlowState | null> {
+          // implement load state logic
+          return null;
+        }
+        async deleteState(flowId: string): Promise<boolean> {
+          // implement delete state logic
+          return true;
+        }
+        async saveResult(flowId: string, methodName: string, result: any): Promise<void> {
+          // implement save result logic
+        }
+        async loadResult(flowId: string, methodName: string): Promise<any | null> {
+          // implement load result logic
+          return null;
+        }
+        async deleteResult(flowId: string): Promise<boolean> {
+          // implement delete result logic
+          return true;
+        }
+        async saveMetrics(flowId: string, metrics: Record<string, any>): Promise<void> {
+          // implement save metrics logic
+        }
+        async loadMetrics(flowId: string): Promise<Record<string, any> | null> {
+          // implement load metrics logic
+          return null;
+        }
+        async deleteMetrics(flowId: string): Promise<boolean> {
+          // implement delete metrics logic
+          return true;
+        }
+        async saveFlowState(): Promise<void> {
+          // implement save flow state logic
+        }
+        async loadFlowState(): Promise<FlowState | null> {
+          // implement load flow state logic
+          return null;
+        }
+        async saveConfig(flowId: string, config: Record<string, any>): Promise<void> {
+          // implement save config logic
+        }
+        async loadConfig(flowId: string): Promise<Record<string, any> | null> {
+          // implement load config logic
+          return null;
+        }
+        async clearFlowData(flowId: string, options?: { olderThan?: number }): Promise<void> {
+          // implement clear flow data logic
+        }
+        async getDistinctFlowIds(): Promise<string[]> {
+          // implement get distinct flow ids logic
+          return [];
+        }
+        async getFlowCount(): Promise<number> {
+          // implement get flow count logic
+          return 0;
+        }
+        async getFlowIds(): Promise<string[]> {
+          // implement get flow ids logic
+          return [];
+        }
+        async getFlowData(flowId: string): Promise<Record<string, any> | null> {
+          // implement get flow data logic
+          return null;
+        }
+        async getFlowStates(): Promise<Record<string, FlowState>> {
+          // implement get flow states logic
+          return {};
+        }
+        async getFlowResults(): Promise<Record<string, any>> {
+          // implement get flow results logic
+          return {};
+        }
+        async getFlowMetrics(): Promise<Record<string, Record<string, any>>> {
+          // implement get flow metrics logic
+          return {};
+        }
+        async saveFlowData(flowId: string, data: FlowData): Promise<void> {
+          // implement save flow data logic
+        }
+        async loadFlowData(flowId: string, type: string): Promise<FlowData | null> {
+          // implement load flow data logic
+          return null;
+        }
+        async getAllFlowDataByType(flowId: string, type: string): Promise<FlowData[]> {
+          // implement get all flow data by type logic
+          return [];
+        }
+      })(),
+      scheduler: {
+        maxParallelFlows: options.scheduler?.maxParallelFlows ?? 1,
+        priorityStrategy: options.scheduler?.priorityStrategy ?? 'fifo',
+        backoffStrategy: options.scheduler?.backoffStrategy ?? 'exponential'
       },
       visualization: {
-        outputPath: './visualizations',
-        optimizationLevel: 'medium',
-        colorScheme: 'status',
-        includeExecutionMetrics: true
-      },
-      ...options
-    };
-    
-    // Initialize memory connector if enabled
-    if (this.options.enableMemoryIntegration) {
-      this.memoryConnector = this.options.memoryConnector || new FlowMemoryConnector({
-        compressionLevel: this.options.memory.compressionLevel,
-        enableCaching: true
-      });
-    }
-    
-    // Initialize tracker with optimized settings
-    this.tracker = new FlowExecutionTracker({
-      enableMemoryTracking: this.options.memory.aggressiveCleanup,
-      maxHistorySize: this.options.metrics.maxHistorySize,
-      trackBottlenecks: true,
-      samplingRate: this.options.metrics.samplingRate,
-      timeSeriesInterval: this.options.metrics.enableDetailedTracking ? 1000 : 0
-    });
-    
-    // Initialize scheduler with optimized settings
-    const schedulerOptions: SchedulerOptions = {
-      maxConcurrency: this.options.execution.maxConcurrency,
-      optimizeFor: this.options.optimizeFor,
-      enablePredictiveScheduling: true,
-      resourceLimits: {
-        // Set reasonable defaults based on system
-        availableCpu: navigator?.hardwareConcurrency || 4,
-        availableMemory: this.options.memory.budgetMB
-      },
-      ...this.options.scheduler
-    };
-    
-    this.scheduler = new FlowScheduler(schedulerOptions, this.tracker);
-    
-    // Initialize orchestrator with integrated components
-    this.orchestrator = new FlowOrchestrator({
-      optimizeFor: this.options.optimizeFor,
-      enableMemoryIntegration: this.options.enableMemoryIntegration,
-      memoryConnector: this.memoryConnector,
-      execution: {
-        maxConcurrency: this.options.execution.maxConcurrency,
-        timeout: this.options.execution.timeout,
-        retryCount: this.options.execution.retryCount,
-        checkpointInterval: this.options.execution.checkpointInterval
-      }
-    });
-    
-    // Wire up event handlers for coordinated execution
-    this.setupEventHandlers();
-  }
-  
-  /**
-   * Set up internal event handlers with optimized event flow
-   */
-  private setupEventHandlers(): void {
-    // Forward important events from inner components
-    this.orchestrator.events.on('flow_started', (event) => {
-      this.scheduler.markFlowCompleted(event.id, true);
-      this.emit('flow_started', event);
-    });
-    
-    this.orchestrator.events.on('flow_completed', (event) => {
-      this.scheduler.markFlowCompleted(event.id, event.success, event.result);
-      
-      // Cache result for future reference
-      if (event.success && event.result !== undefined) {
-        this.resultCache.set(event.id, event.result);
-      }
-      
-      this.emit('flow_completed', event);
-      
-      // Track peak memory usage
-      this.updateMemoryUsage();
-    });
-    
-    this.orchestrator.events.on('flow_error', (event) => {
-      this.tracker.recordFlowError(event.id, event.error);
-      this.emit('flow_error', event);
-    });
-    
-    // Process scheduler events
-    this.scheduler.on('flow_started', (event) => {
-      this.emit('scheduler_flow_started', event);
-    });
-    
-    this.scheduler.on('scheduler_stats', (stats) => {
-      this.emit('scheduler_stats', stats);
-    });
-    
-    // Process tracker events
-    this.tracker.on('flow_registered', (event) => {
-      this.emit('tracker_flow_registered', event);
-    });
-  }
-  
-  /**
-   * Track memory usage for performance monitoring
-   */
-  private updateMemoryUsage(): void {
-    try {
-      const memoryUsage = process.memoryUsage().heapUsed / (1024 * 1024); // MB
-      this.peakMemoryUsage = Math.max(this.peakMemoryUsage, memoryUsage);
-    } catch (e) {
-      // Memory tracking not supported
-    }
-  }
-  
-  /**
-   * Register a flow with the orchestration system
-   */
-  registerFlow<TState extends FlowState>(definition: FlowDefinition<TState>): FlowId {
-    // Generate ID if not provided
-    const id = definition.id || `${definition.flow.constructor.name}-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`;
-    
-    // Register with orchestrator
-    const registeredId = this.orchestrator.registerFlow(definition.flow, {
-      id,
-      priority: definition.priority,
-      metadata: {
-        ...definition.metadata,
-        name: definition.name,
-        description: definition.description,
-        tags: definition.tags
-      }
-    });
-    
-    // Store flow definition for future reference
-    this.flows.set(registeredId, definition);
-    
-    // Register with scheduler
-    this.scheduler.registerFlow(registeredId, definition.flow, {
-      priority: definition.priority,
-      resourceEstimate: definition.resourceEstimate,
-      dependencies: definition.dependencies || []
-    });
-    
-    // Set up dependencies if provided
-    if (definition.dependencies && definition.dependencies.length > 0) {
-      for (const dependencyId of definition.dependencies) {
-        // Register dependency with orchestrator
-        this.orchestrator.addDependency(
-          dependencyId,
-          registeredId,
-          {
-            condition: definition.condition,
-            dataMapping: definition.dataMapping
-          }
-        );
-        
-        // Also register with scheduler
-        this.scheduler.addDependency(registeredId, dependencyId);
-      }
-    }
-    
-    return registeredId;
-  }
-  
-  /**
-   * Add a dependency between flows
-   */
-  addDependency(
-    dependencyId: FlowId,
-    dependentId: FlowId,
-    options?: {
-      condition?: (result: any) => boolean | Promise<boolean>;
-      dataMapping?: (result: any) => any;
-    }
-  ): void {
-    // Add dependency in orchestrator
-    this.orchestrator.addDependency(dependencyId, dependentId, options);
-    
-    // Also register with scheduler
-    this.scheduler.addDependency(dependentId, dependencyId);
-  }
-  
-  /**
-   * Execute all registered flows with optimized multi-flow orchestration
-   */
-  async execute(options?: {
-    inputData?: Record<string, any>;
-    generateVisualization?: boolean;
-  }): Promise<MultiFlowExecutionResult> {
-    const startTime = performance.now();
-    this.executionStartTime = startTime;
-    this.initialMemoryUsage = process.memoryUsage?.().heapUsed / (1024 * 1024) || 0;
-    this.peakMemoryUsage = this.initialMemoryUsage;
-    
-    // Initialize tracking components
-    this.tracker.initialize();
-    this.resultCache.clear();
-    
-    // Use scheduler for optimized execution order
-    this.scheduler.start();
-    
-    // Execute flows through orchestrator
-    const results = await this.orchestrator.execute({
-      inputData: options?.inputData,
-      strategy: this.options.execution.strategy
-    });
-    
-    // Stop scheduler
-    this.scheduler.stop();
-    
-    // Finalize tracking
-    this.tracker.finalize();
-    this.executionEndTime = performance.now();
-    
-    // Get metrics
-    const trackerMetrics = this.tracker.getMetrics();
-    
-    // Generate visualization if requested
-    let visualizationPath: string | undefined;
-    if (options?.generateVisualization) {
-      visualizationPath = await this.visualizeFlows();
-    }
-    
-    // Compute critical path
-    this.calculateCriticalPath();
-    
-    // Clean up memory if aggressive cleanup is enabled
-    if (this.options.memory.aggressiveCleanup) {
-      this.cleanupMemory();
-    }
-    
-    // Extract errors
-    const errors = new Map<FlowId, Error>();
-    for (const [flowId, data] of this.tracker.getFlows?.() || []) {
-      if (data.errors && data.errors.length > 0) {
-        errors.set(flowId, data.errors[0]);
-      }
-    }
-    
-    // Build comprehensive result
-    return {
-      results,
-      metrics: {
-        totalExecutionTime: this.executionEndTime - this.executionStartTime,
-        flowsExecuted: trackerMetrics.flowCount,
-        flowsSucceeded: trackerMetrics.completedFlows,
-        flowsFailed: trackerMetrics.failedFlows,
-        averageFlowExecutionTime: trackerMetrics.averageFlowExecutionTime,
-        peakMemoryUsageMB: this.peakMemoryUsage - this.initialMemoryUsage,
-        criticalPathTime: this.criticalPathTime
-      },
-      errors: errors.size > 0 ? errors : undefined,
-      visualizationPath
-    };
-  }
-  
-  /**
-   * Calculate the critical execution path
-   */
-  private calculateCriticalPath(): void {
-    // Get flow graph from orchestrator
-    const graph = this.orchestrator.getFlowGraph();
-    const executionTimes = this.tracker.getMetrics().flowExecutionTimes;
-    
-    // Initialize time maps
-    const earliestStart = new Map<FlowId, number>();
-    const earliestFinish = new Map<FlowId, number>();
-    const latestStart = new Map<FlowId, number>();
-    const latestFinish = new Map<FlowId, number>();
-    const slack = new Map<FlowId, number>();
-    
-    // Initial pass: calculate earliest times (forward)
-    const calculateEarliestTimes = () => {
-      // Find source nodes (no incoming edges)
-      const sourceNodes = graph.nodes.filter(node => 
-        !graph.edges.some(edge => edge.to === node.id));
-      
-      // Initialize source nodes
-      for (const node of sourceNodes) {
-        earliestStart.set(node.id, 0);
-        earliestFinish.set(node.id, executionTimes[node.id] || 0);
-      }
-      
-      // Process remaining nodes in topological order
-      const visited = new Set<FlowId>(sourceNodes.map(n => n.id));
-      let allVisited = false;
-      
-      while (!allVisited) {
-        allVisited = true;
-        
-        for (const node of graph.nodes) {
-          if (visited.has(node.id)) continue;
-          
-          // Check if all dependencies are processed
-          const dependencies = graph.edges
-            .filter(edge => edge.to === node.id)
-            .map(edge => edge.from);
-          
-          if (dependencies.every(dep => visited.has(dep))) {
-            // Calculate earliest start time
-            const maxDependencyFinish = Math.max(
-              0,
-              ...dependencies.map(dep => earliestFinish.get(dep) || 0)
-            );
-            
-            earliestStart.set(node.id, maxDependencyFinish);
-            earliestFinish.set(
-              node.id,
-              maxDependencyFinish + (executionTimes[node.id] || 0)
-            );
-            
-            visited.add(node.id);
-          } else {
-            allVisited = false;
-          }
-        }
+        enabled: options.visualization?.enabled ?? false,
+        format: options.visualization?.format ?? 'png',
+        outputDirectory: options.visualization?.outputDirectory ?? '.',
+        includeDependencies: options.visualization?.includeDependencies ?? true,
+        includeMetrics: options.visualization?.includeMetrics ?? true
       }
     };
-    
-    // Second pass: calculate latest times (backward)
-    const calculateLatestTimes = () => {
-      // Find sink nodes (no outgoing edges)
-      const sinkNodes = graph.nodes.filter(node => 
-        !graph.edges.some(edge => edge.from === node.id));
-      
-      // Maximum earliest finish
-      const maxFinish = Math.max(
-        0,
-        ...Array.from(earliestFinish.values())
-      );
-      
-      // Initialize sink nodes
-      for (const node of sinkNodes) {
-        latestFinish.set(node.id, maxFinish);
-        latestStart.set(
-          node.id,
-          maxFinish - (executionTimes[node.id] || 0)
-        );
-      }
-      
-      // Process remaining nodes in reverse topological order
-      const visited = new Set<FlowId>(sinkNodes.map(n => n.id));
-      let allVisited = false;
-      
-      while (!allVisited) {
-        allVisited = true;
-        
-        for (const node of graph.nodes) {
-          if (visited.has(node.id)) continue;
-          
-          // Check if all dependents are processed
-          const dependents = graph.edges
-            .filter(edge => edge.from === node.id)
-            .map(edge => edge.to);
-          
-          if (dependents.every(dep => visited.has(dep))) {
-            // Calculate latest finish time
-            const minDependentStart = Math.min(
-              maxFinish,
-              ...dependents.map(dep => latestStart.get(dep) || maxFinish)
-            );
-            
-            latestFinish.set(node.id, minDependentStart);
-            latestStart.set(
-              node.id,
-              minDependentStart - (executionTimes[node.id] || 0)
-            );
-            
-            visited.add(node.id);
-          } else {
-            allVisited = false;
-          }
-        }
-      }
-    };
-    
-    // Calculate slack and find critical path
-    const findCriticalPath = () => {
-      // Calculate slack for each node
-      for (const node of graph.nodes) {
-        const nodeSlack = (latestStart.get(node.id) || 0) - 
-                          (earliestStart.get(node.id) || 0);
-        slack.set(node.id, nodeSlack);
-      }
-      
-      // Flows with zero slack are on the critical path
-      const criticalFlows = graph.nodes
-        .filter(node => (slack.get(node.id) || Infinity) <= 0.001) // Account for floating point imprecision
-        .map(node => node.id);
-      
-      this.criticalPathFlows = criticalFlows;
-      
-      // Calculate critical path time
-      const maxFinishTime = Math.max(
-        0,
-        ...Array.from(earliestFinish.values())
-      );
-      
-      this.criticalPathTime = maxFinishTime;
-    };
-    
-    // Execute algorithm
-    calculateEarliestTimes();
-    calculateLatestTimes();
-    findCriticalPath();
+    this.#visualizationOptions = this.#options.visualization;
+    this.#executionStartTime = Date.now();
+    this.#memoryUsage.initial = process.memoryUsage().heapUsed;
   }
-  
-  /**
-   * Generate visualization of flow dependencies and execution
-   */
-  async visualizeFlows(): Promise<string> {
-    // Create visualizer if not exists
-    if (!this.visualizer) {
-      this.visualizer = new FlowDependencyVisualizer(
-        this.orchestrator,
-        this.options.visualization
-      );
-    }
-    
-    // Generate visualization
-    return await this.visualizer.visualize();
+
+  getOrchestrator(): FlowOrchestrator | undefined {
+    return Array.from(this.#orchestrators.values())[0];
   }
-  
-  /**
-   * Clean up memory for completed flows
-   */
-  private cleanupMemory(): void {
-    if (!this.options.memory.aggressiveCleanup) return;
-    
-    // Get completed flows
-    const metrics = this.tracker.getMetrics();
-    const completedFlows = Object.keys(metrics.flowExecutionTimes);
-    
-    for (const flowId of completedFlows) {
-      const flow = this.orchestrator.getFlow(flowId);
-      if (flow) {
-        // Clear the state but keep the return value
-        if (flow.state && typeof flow.state === 'object') {
-          // Keep minimal information and clear the rest
-          const returnValue = flow.getReturnValue();
-          
-          // Simplify state object to reduce memory
-          for (const key in flow.state) {
-            if (Object.prototype.hasOwnProperty.call(flow.state, key)) {
-              // @ts-ignore - Dynamically clearing properties
-              flow.state[key] = null;
-            }
-          }
-          
-          // Preserve return value
-          flow.setReturnValue(returnValue);
-        }
+
+  getFlowOrchestrator(flowId: string): FlowOrchestrator | undefined {
+    for (const orchestrator of this.#orchestrators.values()) {
+      if (orchestrator.getFlow(flowId)) {
+        return orchestrator;
       }
     }
-    
-    // Force garbage collection if supported
-    if (global.gc) {
-      try {
-        global.gc();
-      } catch (e) {
-        // Garbage collection not accessible
-      }
+    return undefined;
+  }
+
+  registerFlow(definition: any): string {
+    const orchestrator = this.getOrchestrator();
+    if (!orchestrator) {
+      throw new Error('No orchestrator available');
+    }
+    const flowId = orchestrator.registerFlow(definition);
+    const flow = orchestrator.getFlow(flowId);
+    if (flow) {
+      this.#pendingFlows.set(flowId, flow);
+    }
+    return flowId;
+  }
+
+  getFlow(flowId: string): ExtendedFlow<any, FlowState> | undefined {
+    return this.#pendingFlows.get(flowId) || 
+           this.#completedFlows.get(flowId) || 
+           this.#failedFlows.get(flowId);
+  }
+
+  removeFlow(flowId: string): void {
+    const orchestrator = this.getFlowOrchestrator(flowId);
+    if (orchestrator) {
+      orchestrator.removeFlow(flowId);
+      this.#pendingFlows.delete(flowId);
+      this.#completedFlows.delete(flowId);
+      this.#failedFlows.delete(flowId);
+      this.#runningFlows.delete(flowId);
+      this.#flowExecutionTimes.delete(flowId);
+      this.#errors.delete(flowId);
     }
   }
-  
-  /**
-   * Get detailed execution metrics
-   */
-  getMetrics() {
-    if (!this.executionEndTime) {
-      return { message: 'No execution has completed yet' };
-    }
-    
-    const trackerMetrics = this.tracker.getMetrics();
-    
-    return {
-      execution: {
-        totalTime: this.executionEndTime - this.executionStartTime,
-        flowsExecuted: trackerMetrics.flowCount,
-        flowsSucceeded: trackerMetrics.completedFlows,
-        flowsFailed: trackerMetrics.failedFlows,
-        flowsPending: trackerMetrics.pendingFlows,
-        averageFlowTime: trackerMetrics.averageFlowExecutionTime,
-        medianFlowTime: trackerMetrics.medianFlowExecutionTime,
-        maxFlowTime: trackerMetrics.maxFlowExecutionTime,
-        criticalPathTime: this.criticalPathTime,
-        criticalPathFlows: this.criticalPathFlows
-      },
-      memory: {
-        initialUsageMB: this.initialMemoryUsage,
-        peakUsageMB: this.peakMemoryUsage,
-        deltaMB: this.peakMemoryUsage - this.initialMemoryUsage
-      },
-      bottlenecks: trackerMetrics.bottlenecks,
-      flowExecutionTimes: trackerMetrics.flowExecutionTimes,
-      timeSeriesData: trackerMetrics.timeSeriesData
-    };
-  }
-  
-  /**
-   * Reset the orchestrator to initial state
-   */
+
   reset(): void {
-    this.flows.clear();
-    this.resultCache.clear();
-    this.orchestrator.reset();
-    this.scheduler.reset();
-    this.tracker.reset();
+    this.#pendingFlows.clear();
+    this.#completedFlows.clear();
+    this.#failedFlows.clear();
+    this.#runningFlows.clear();
+    this.#flowExecutionTimes.clear();
+    this.#errors.clear();
+    this.#executionStartTime = 0;
+    this.#executionEndTime = undefined;
+    this.#checkpointTimer = undefined;
+    this.#performanceMetrics = {
+      totalExecutionTime: 0,
+      averageFlowTime: 0,
+      maxFlowTime: 0,
+      minFlowTime: Infinity,
+      flowCount: 0,
+      completedFlows: 0,
+      failedFlows: 0
+    };
+    for (const orchestrator of this.#orchestrators.values()) {
+      orchestrator.reset();
+    }
+  }
+
+  execute(options?: { inputData?: Record<string, any> }): Promise<any> {
+    return Promise.all(
+      Array.from(this.#orchestrators.values()).map(orchestrator =>
+        orchestrator.execute(options)
+      )
+    ).then(results => results[0]);
+  }
+
+  startFlow(flowId: string, options?: any): Promise<void> {
+    const orchestrator = this.getFlowOrchestrator(flowId);
+    if (!orchestrator) {
+      throw new Error(`Flow ${flowId} not found`);
+    }
+    return orchestrator.startFlow(flowId, options);
+  }
+
+  waitForAnyFlowToComplete(): Promise<{ flowId: string; result: any } | null> {
+    return Promise.race(
+      Array.from(this.#orchestrators.values()).map(orchestrator =>
+        orchestrator.waitForAnyFlowToComplete()
+      )
+    );
+  }
+
+  saveExecutionCheckpoint(): Promise<void> {
+    return Promise.all(
+      Array.from(this.#orchestrators.values()).map(orchestrator =>
+        orchestrator.saveExecutionCheckpoint()
+      )
+    ).then(() => {});
+  }
+
+  loadExecutionCheckpoint(): Promise<void> {
+    return Promise.all(
+      Array.from(this.#orchestrators.values()).map(orchestrator =>
+        orchestrator.loadExecutionCheckpoint()
+      )
+    ).then(() => {});
+  }
+
+  getMetrics(): FlowExecutionMetrics {
+    const metrics: FlowExecutionMetrics = {
+      totalExecutionTime: 0,
+      flowCount: 0,
+      completedFlows: 0,
+      failedFlows: 0,
+      pendingFlows: 0,
+      runningFlows: 0,
+      averageFlowExecutionTime: 0,
+      medianFlowExecutionTime: 0,
+      maxFlowExecutionTime: 0,
+      minFlowExecutionTime: Infinity,
+      p95FlowExecutionTime: 0,
+      flowExecutionTimes: new Map<string, number>(),
+      statusCounts: {
+        pending: 0,
+        running: 0,
+        completed: 0,
+        failed: 0
+      },
+      bottlenecks: [],
+      timeSeriesData: [] as Array<{
+        timestamp: number;
+        metrics: Record<string, number>;
+      }>,
+      errors: new Map<string, Error>()
+    };
+
+    for (const orchestrator of this.#orchestrators.values()) {
+      const orchestratorMetrics = orchestrator.getMetrics();
+      if (!orchestratorMetrics) continue;
+
+      metrics.totalExecutionTime += orchestratorMetrics.totalExecutionTime || 0;
+      metrics.flowCount += orchestratorMetrics.flowCount || 0;
+      metrics.completedFlows += orchestratorMetrics.completedFlows || 0;
+      metrics.failedFlows += orchestratorMetrics.failedFlows || 0;
+      metrics.pendingFlows += orchestratorMetrics.pendingFlows || 0;
+      metrics.runningFlows += orchestratorMetrics.runningFlows || 0;
+
+      if (orchestratorMetrics.flowExecutionTimes) {
+        for (const [flowId, time] of orchestratorMetrics.flowExecutionTimes.entries()) {
+          metrics.flowExecutionTimes.set(flowId, time);
+        }
+      }
+
+      if (orchestratorMetrics.errors) {
+        for (const [flowId, error] of orchestratorMetrics.errors.entries()) {
+          metrics.errors.set(flowId, error);
+        }
+      }
+
+      metrics.timeSeriesData.push(...(orchestratorMetrics.timeSeriesData || []));
+
+      // Update status counts
+      metrics.statusCounts.pending += orchestratorMetrics.statusCounts?.pending || 0;
+      metrics.statusCounts.running += orchestratorMetrics.statusCounts?.running || 0;
+      metrics.statusCounts.completed += orchestratorMetrics.statusCounts?.completed || 0;
+      metrics.statusCounts.failed += orchestratorMetrics.statusCounts?.failed || 0;
+    }
+
+    // Calculate derived metrics
+    const times = Array.from(metrics.flowExecutionTimes.values());
+    if (times.length > 0) {
+      metrics.averageFlowExecutionTime = times.reduce((a, b) => (a || 0) + (b || 0), 0) / times.length;
+      const sortedTimes = [...times].sort((a, b) => (a || 0) - (b || 0));
+      metrics.medianFlowExecutionTime = sortedTimes[Math.floor(sortedTimes.length / 2)] || 0;
+      metrics.p95FlowExecutionTime = sortedTimes[Math.floor(sortedTimes.length * 0.95)] || 0;
+      metrics.maxFlowExecutionTime = Math.max(...times) || 0;
+      metrics.minFlowExecutionTime = Math.min(...times) || Infinity;
+    }
+
+    return metrics;
+  }
+
+  getMetricsForFlow(flowId: string): FlowExecutionMetrics {
+    const orchestrator = this.getFlowOrchestrator(flowId);
+    const flowMetrics = orchestrator?.getMetricsForFlow(flowId);
+    if (!flowMetrics) {
+      throw new Error(`Metrics not available for flow ${flowId}`);
+    }
+    return flowMetrics;
+  }
+
+  getFlowDependencyOrder(): string[] {
+    return Array.from(this.#pendingFlows.keys())
+      .sort((a, b) => {
+        const aMetrics = this.#pendingFlows.get(a)?.state.metrics;
+        const bMetrics = this.#pendingFlows.get(b)?.state.metrics;
+        
+        if (!aMetrics?.dependencies?.size) return -1;
+        if (!bMetrics?.dependencies?.size) return 1;
+        
+        return aMetrics.dependencies.size - bMetrics.dependencies.size;
+      });
+  }
+
+  getFlowDependencyMatrix(): Record<string, Record<string, boolean>> {
+    const matrix: Record<string, Record<string, boolean>> = {};
+    for (const [flowId, flow] of this.#pendingFlows) {
+      matrix[flowId] = {};
+      if (flow.state.metrics?.dependencies) {
+        for (const dep of flow.state.metrics.dependencies) {
+          matrix[flowId][dep] = true;
+        }
+      }
+    }
+    return matrix;
+  }
+
+  getFlowDependencyTree(): Record<string, string[]> {
+    const tree: Record<string, string[]> = {};
+    for (const [flowId, flow] of this.#pendingFlows) {
+      tree[flowId] = Array.from(flow.state.metrics?.dependencies || new Set());
+    }
+    return tree;
+  }
+
+  getFlowDependencyList(): Array<{ id: string; dependencies: string[] }> {
+    return Array.from(this.#pendingFlows.entries()).map(([id, flow]) => ({
+      id,
+      dependencies: Array.from(flow.state.metrics?.dependencies || new Set())
+    }));
+  }
+
+  getFlowDependencyDepth(): Record<string, number> {
+    const depths: Record<string, number> = {};
+    const visited = new Set<string>();
+
+    const calculateDepth = (flowId: string, currentDepth = 0): number => {
+      if (visited.has(flowId)) return depths[flowId] || currentDepth;
+      visited.add(flowId);
+
+      const flow = this.#pendingFlows.get(flowId);
+      if (!flow?.state.metrics?.dependencies) {
+        depths[flowId] = currentDepth;
+        return currentDepth;
+      }
+
+      if (flow.state.metrics.dependencies.size === 0) {
+        depths[flowId] = currentDepth;
+        return currentDepth;
+      }
+
+      const maxDependencyDepth = Math.max(...Array.from(flow.state.metrics.dependencies).map(dep => 
+        calculateDepth(dep, currentDepth + 1)
+      ));
+
+      depths[flowId] = maxDependencyDepth;
+      return maxDependencyDepth;
+    };
+
+    for (const flowId of this.#pendingFlows.keys()) {
+      calculateDepth(flowId, 0);
+    }
+
+    return depths;
+  }
+
+  getFlowDependencyWidth(): Record<string, number> {
+    const widths: Record<string, number> = {};
+    for (const [flowId, flow] of this.#pendingFlows) {
+      widths[flowId] = flow.state.metrics?.dependencies?.size || 0;
+    }
+    return widths;
+  }
+
+  getFlowDependencyFanIn(): Record<string, number> {
+    const fanIn: Record<string, number> = {};
+    for (const [flowId, flow] of this.#pendingFlows) {
+      fanIn[flowId] = flow.state.metrics?.dependencies?.size || 0;
+    }
+    return fanIn;
+  }
+
+  getFlowDependencyFanOut(): Record<string, number> {
+    const fanOut: Record<string, number> = {};
+    for (const flowId of this.#pendingFlows.keys()) {
+      const flow = this.#pendingFlows.get(flowId);
+      if (!flow?.state.metrics?.dependencies) continue;
+      fanOut[flowId] = this.getDependentFlows(flowId).length;
+    }
+    return fanOut;
+  }
+
+  getFlowDependencyCycles(): string[][] {
+    const cycles: string[][] = [];
+    const visited = new Set<string>();
+    const visiting = new Set<string>();
+
+    const findCycles = (flowId: string, path: string[] = []): void => {
+      if (visited.has(flowId)) return;
+      if (visiting.has(flowId)) {
+        const cycle = path.slice(path.indexOf(flowId));
+        cycle.push(flowId);
+        cycles.push(cycle);
+        return;
+      }
+
+      visiting.add(flowId);
+      path.push(flowId);
+
+      const flow = this.#pendingFlows.get(flowId);
+      if (!flow?.state.metrics?.dependencies) return;
+
+      for (const dep of flow.state.metrics.dependencies) {
+        findCycles(dep, [...path]);
+      }
+
+      visiting.delete(flowId);
+      visited.add(flowId);
+    };
+
+    for (const flowId of this.#pendingFlows.keys()) {
+      findCycles(flowId, []);
+    }
+
+    return cycles;
+  }
+
+  getFlowDependencyCriticalPath(): string[] {
+    const criticalPath: string[] = [];
+    let maxTime = 0;
+
+    for (const flowId of this.getFlowDependencyOrder()) {
+      const flow = this.getFlow(flowId);
+      if (!flow?.state.metrics?.endTime) continue;
+
+      const flowTime = flow.state.metrics.endTime - flow.state.metrics.startTime;
+      if (flowTime > maxTime) {
+        maxTime = flowTime;
+        criticalPath.length = 0;
+        criticalPath.push(flowId);
+      } else if (flowTime === maxTime) {
+        criticalPath.push(flowId);
+      }
+    }
+
+    return criticalPath;
+  }
+
+  getFlowDependencyCriticalPathFlows(): string[] {
+    return this.getFlowDependencyCriticalPath();
+  }
+
+  getDependentFlows(flowId: string): string[] {
+    const dependents = new Set<string>();
+    for (const [id, flow] of this.#pendingFlows) {
+      if (flow.state.metrics?.dependencies?.has(flowId)) {
+        dependents.add(id);
+      }
+    }
+    return Array.from(dependents);
+  }
+
+  getFlowGraph(): {
+    nodes: Array<{ id: string }>
+    edges: Array<{ from: string; to: string }>
+  } {
+    const nodes = Array.from(this.pendingFlows.keys()).map(id => ({ id }));
+    const edges: Array<{ from: string; to: string }> = [];
     
-    this.initialMemoryUsage = 0;
-    this.peakMemoryUsage = 0;
-    this.executionStartTime = 0;
-    this.executionEndTime = undefined;
-    this.criticalPathTime = 0;
-    this.criticalPathFlows = [];
-    
-    this.emit('orchestrator_reset');
+    for (const [flowId, flow] of this.pendingFlows) {
+      if (flow.state.metrics?.dependencies) {
+        for (const dep of flow.state.metrics.dependencies) {
+          edges.push({ from: dep, to: flowId });
+        }
+      }
+    }
+
+    return { nodes, edges };
   }
-  
-  /**
-   * Get a registered flow definition
-   */
-  getFlowDefinition(flowId: FlowId): FlowDefinition | undefined {
-    return this.flows.get(flowId);
+
+  getFlowDependencies(flowId: string): string[] {
+    const flow = this.getFlow(flowId);
+    return flow?.state.metrics?.dependencies ? Array.from(flow.state.metrics.dependencies) : [];
   }
-  
-  /**
-   * Get a flow by ID
-   */
-  getFlow(flowId: FlowId): Flow<any> | undefined {
-    return this.orchestrator.getFlow(flowId);
+
+  get nodes(): Array<{ id: string }> {
+    const nodes: Array<{ id: string }> = [];
+    for (const orchestrator of this.#orchestrators.values()) {
+      nodes.push(...orchestrator.nodes);
+    }
+    return nodes;
   }
-  
-  /**
-   * Get all registered flows
-   */
-  getFlows(): Map<FlowId, FlowDefinition> {
-    return new Map(this.flows);
+
+  get edges(): Array<{ from: string; to: string }> {
+    const edges: Array<{ from: string; to: string }> = [];
+    for (const orchestrator of this.#orchestrators.values()) {
+      edges.push(...orchestrator.edges);
+    }
+    return edges;
   }
-  
-  /**
-   * Get the flow dependency graph
-   */
-  getFlowGraph() {
-    return this.orchestrator.getFlowGraph();
+
+  get options(): Required<FlowOrchestratorOptions> {
+    return this.#options;
   }
-  
-  /**
-   * Get scheduler statistics
-   */
-  getSchedulerStats() {
-    return this.scheduler.getStats();
+
+  get pendingFlows(): Map<string, ExtendedFlow<any, FlowState>> {
+    return this.#pendingFlows;
+  }
+
+  get completedFlows(): Map<string, ExtendedFlow<any, FlowState>> {
+    return this.#completedFlows;
+  }
+
+  get failedFlows(): Map<string, ExtendedFlow<any, FlowState>> {
+    return this.#failedFlows;
+  }
+
+  get currentExecution(): {
+    startTime: number;
+    endTime?: number;
+    status: 'running' | 'completed' | 'failed';
+    error?: Error;
+  } {
+    return this.#currentExecution;
+  }
+
+  get criticalPath(): {
+    flows: string[];
+    time: number;
+  } {
+    return this.#criticalPath;
+  }
+
+  get runningFlows(): Set<string> {
+    return this.#runningFlows;
+  }
+
+  get flowExecutionTimes(): Map<string, number> {
+    return this.#flowExecutionTimes;
+  }
+
+  get timeSeriesData(): Array<{
+    timestamp: number;
+    metrics: Record<string, number>;
+  }> {
+    return this.#timeSeriesData;
+  }
+
+  get errors(): Map<string, Error> {
+    return this.#errors;
+  }
+
+  get executionStartTime(): number {
+    return this.#executionStartTime;
+  }
+
+  get executionEndTime(): number | undefined {
+    return this.#executionEndTime;
+  }
+
+  get checkpointTimer(): NodeJS.Timeout | undefined {
+    return this.#checkpointTimer;
+  }
+
+  get memoryUsage(): {
+    initial: number;
+    peak: number;
+    current: number;
+  } {
+    return this.#memoryUsage;
+  }
+
+  get performanceMetrics(): {
+    totalExecutionTime: number;
+    averageFlowTime: number;
+    maxFlowTime: number;
+    minFlowTime: number;
+    flowCount: number;
+    completedFlows: number;
+    failedFlows: number;
+  } {
+    return this.#performanceMetrics;
+  }
+
+  get visualizationPath(): string | undefined {
+    return this.#visualizationPath;
+  }
+
+  get visualizationOptions(): FlowVisualizationOptions | undefined {
+    return this.#visualizationOptions;
+  }
+
+  getOptimizedOptions(): Record<string, any> {
+    const options: Record<string, any> = {
+      optimizeFor: this.#options.optimizeFor,
+      enableMemoryIntegration: this.#options.enableMemoryIntegration,
+      scheduler: {
+        maxParallelFlows: this.#options.scheduler.maxParallelFlows,
+        priorityStrategy: this.#options.scheduler.priorityStrategy,
+        backoffStrategy: this.#options.scheduler.backoffStrategy
+      },
+      visualization: this.#options.visualization
+    };
+    return options;
+  }
+
+  getFlowMetrics(flowId: string): FlowMetrics | undefined {
+    const flow = this.getFlow(flowId);
+    if (!flow?.state?.metrics) return undefined;
+    return flow.state.metrics;
+  }
+
+  getFlowExecutionTime(flowId: string): number {
+    const metrics = this.getFlowMetrics(flowId);
+    if (!metrics?.startTime) return 0;
+    const endTime = metrics.endTime ?? Date.now();
+    return endTime - metrics.startTime;
+  }
+
+  getFlowResourceUsage(flowId: string): FlowMetrics['nodeExecutions'] | undefined {
+    const metrics = this.getFlowMetrics(flowId);
+    if (!metrics?.nodeExecutions) return undefined;
+    return metrics.nodeExecutions;
+  }
+
+  getFlowStatus(flowId: string): FlowStatus {
+    const flow = this.getFlow(flowId);
+    return flow?.state?.status ?? 'pending';
+  }
+
+  getFlowState(flowId: string): FlowState | undefined {
+    const flow = this.getFlow(flowId);
+    if (!flow?.state) return undefined;
+    return flow.state;
   }
 }
