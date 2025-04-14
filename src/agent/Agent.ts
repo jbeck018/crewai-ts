@@ -5,7 +5,7 @@
 
 import { v4 as uuidv4 } from 'uuid';
 import { BaseAgent, AgentConfig, TaskExecutionResult } from './BaseAgent.js';
-import { BaseLLM } from '../llm/BaseLLM.js';
+import { BaseLLM, LLMMessage } from '../llm/BaseLLM.js';
 import { Task } from '../task/Task.js';
 import { BaseTool } from '../tools/BaseTool.js';
 
@@ -140,13 +140,103 @@ export class Agent implements BaseAgent {
    * This is lazily initialized when needed
    */
   private async createAgentExecutor(tools?: BaseTool[], task?: Task) {
-    // This would create the appropriate executor based on the agent configuration
-    // For now, we return a placeholder
+    // Get the LLM instance to use for this agent
+    const llm = await this.getLLM();
+    
+    if (!llm) {
+      throw new Error(`No LLM configured for agent ${this.role}. Please provide an LLM.`);
+    }
+    
+    // Create a proper agent executor that uses the LLM
     return {
       invoke: async (input: any) => {
-        return { output: `Agent ${this.role} executed task successfully` };
+        if (this.verbose) {
+          console.log(`Agent ${this.role} executing task with input: ${JSON.stringify(input)}`);
+        }
+        
+        try {
+          // Construct the prompt for the LLM
+          const messages: LLMMessage[] = [
+            { role: 'system', content: this.getSystemPrompt(task) },
+            { role: 'user', content: this.getUserPrompt(input, task) }
+          ];
+          
+          // Call the LLM with the constructed prompt
+          const result = await llm.complete(messages, {
+            temperature: 0.7,
+            maxTokens: 2000
+          });
+          
+          if (this.verbose) {
+            console.log(`Agent ${this.role} received response: ${result.content}`);
+          }
+          
+          return { 
+            output: result.content,
+            tokenUsage: {
+              prompt: result.promptTokens || 0,
+              completion: result.completionTokens || 0,
+              total: result.totalTokens || 0
+            }
+          };
+        } catch (error) {
+          console.error(`Error in agent ${this.role} execution:`, error);
+          throw error;
+        }
       }
     };
+  }
+  
+  /**
+   * Get the system prompt for the agent
+   * This defines the agent's role, goal, and behavior
+   */
+  private getSystemPrompt(task?: Task): string {
+    return `You are ${this.role}.
+
+Your goal is: ${this.goal}
+
+${this.backstory ? `Backstory: ${this.backstory}
+
+` : ''}${task ? `You are working on the task: ${task.description}
+
+` : ''}Please provide a detailed and thoughtful response.`;
+  }
+  
+  /**
+   * Get the user prompt for the agent
+   * This includes the specific task or query for the agent
+   */
+  private getUserPrompt(input: any, task?: Task): string {
+    if (typeof input === 'string') {
+      return input;
+    } else if (task) {
+      return `Please complete the following task: ${task.description}
+
+Provide a detailed response that fulfills the task requirements.`;
+    } else {
+      return 'Please provide your expert analysis and response.';
+    }
+  }
+  
+  /**
+   * Get the LLM instance to use for this agent
+   * Resolves string LLM references to actual LLM instances
+   */
+  private async getLLM(): Promise<BaseLLM | undefined> {
+    if (!this.llm) {
+      return undefined;
+    }
+    
+    // If the LLM is already a BaseLLM instance, return it
+    if (typeof this.llm !== 'string') {
+      return this.llm;
+    }
+    
+    // If the LLM is a string, it should be resolved to an actual LLM instance
+    // This would typically be handled by a LLM registry or factory
+    // For now, we'll just throw an error
+    throw new Error(`String LLM references are not yet supported: ${this.llm}`);
   }
   
   toString(): string {
