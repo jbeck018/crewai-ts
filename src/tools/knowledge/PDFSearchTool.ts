@@ -6,8 +6,8 @@
 
 import { z } from 'zod';
 import { createStructuredTool } from '../StructuredTool.js';
-import { Knowledge } from '../../knowledge/Knowledge.js';
-import { KnowledgeStorage } from '../../knowledge/storage/KnowledgeStorage.js';
+import { Knowledge } from '../../knowledge/index.js';
+import { KnowledgeStorage } from '../../knowledge/index.js';
 
 // Input schema for PDF search operations
 const pdfSearchSchema = z.object({
