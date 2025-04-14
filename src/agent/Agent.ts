@@ -171,12 +171,18 @@ export class Agent implements BaseAgent {
             console.log(`Agent ${this.role} received response: ${result.content}`);
           }
           
+          // Update token usage tracking for the agent
+          this.tokenUsage.prompt += result.promptTokens || 0;
+          this.tokenUsage.completion += result.completionTokens || 0;
+          this.tokenUsage.total += result.totalTokens || 0;
+          
           return { 
             output: result.content,
-            tokenUsage: {
-              prompt: result.promptTokens || 0,
-              completion: result.completionTokens || 0,
-              total: result.totalTokens || 0
+            metadata: {
+              promptTokens: result.promptTokens || 0,
+              completionTokens: result.completionTokens || 0,
+              totalTokens: result.totalTokens || 0,
+              iterations: this.timesExecuted
             }
           };
         } catch (error) {

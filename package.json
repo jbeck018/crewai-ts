@@ -1,6 +1,6 @@
 {
   "name": "crewai-ts",
-  "version": "0.1.999",
+  "version": "0.2.0",
   "description": "TypeScript port of crewAI for agent-based workflows",
   "type": "module",
   "exports": {
