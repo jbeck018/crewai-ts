@@ -28,8 +28,8 @@ export * from './llm/index.js';
 // Export utils selectively to avoid ambiguity
 export { Cache } from './utils/cache.js';
 export { Logger, LogLevel } from './utils/logger.js';
-// Avoid exporting non-existent modules
-export * from './utils/decorators.js';
+
+// Export flow module
 export * from './flow/index.js';
 
 // Re-export flow decorators separately
