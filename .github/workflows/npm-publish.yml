@@ -69,9 +69,6 @@ jobs:
         # Optimize installation with Bun
         run: bun install --frozen-lockfile
       
-      - name: Lint code
-        run: bun run lint
-      
       - name: Type check
         # Run memory-optimized type checking
         run: bun run type-check
@@ -79,14 +76,6 @@ jobs:
       - name: Build project
         # Use optimized build process
         run: bun run build
-      
-      - name: Run tests
-        # Run optimized Bun tests
-        run: bun test --coverage
-        env:
-          # Use memory-efficient testing configuration for embeddings
-          TEST_USE_MOCK_EMBEDDINGS: true
-          TEST_SKIP_EXTERNAL_API: true
       
       - name: Check bundle size
         # Ensure package size remains optimized

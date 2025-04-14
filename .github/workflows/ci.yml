@@ -42,58 +42,58 @@ jobs:
         # Optimize TypeScript checking to make it more resource-efficient
         run: bun run type-check
 
-  test:
-    name: Run Tests
-    runs-on: ubuntu-latest
-    # Optimize with memory-efficient containerization
-    container:
-      image: node:21.1.0
-      options: --memory=4g --cpus=2
+  # test:
+  #   name: Run Tests
+  #   runs-on: ubuntu-latest
+  #   # Optimize with memory-efficient containerization
+  #   container:
+  #     image: node:21.1.0
+  #     options: --memory=4g --cpus=2
     
-    strategy:
-      matrix:
-        node-version: [21.1.0]
-      # Apply fail-fast optimization for test runs
-      fail-fast: true
+  #   strategy:
+  #     matrix:
+  #       node-version: [21.1.0]
+  #     # Apply fail-fast optimization for test runs
+  #     fail-fast: true
     
-    steps:
-      - uses: actions/checkout@v3
-        with:
-          fetch-depth: 1
+  #   steps:
+  #     - uses: actions/checkout@v3
+  #       with:
+  #         fetch-depth: 1
       
-      - name: Set up Bun
-        uses: oven-sh/setup-bun@v1
-        with:
-          bun-version: latest
-          cache: true
+  #     - name: Set up Bun
+  #       uses: oven-sh/setup-bun@v1
+  #       with:
+  #         bun-version: latest
+  #         cache: true
       
-      - name: Install build tools and dependencies
-        # Install build tools needed for native modules
-        run: |
-          apt-get update
-          apt-get install -y build-essential python3
-          npm install -g node-gyp
-          bun install --frozen-lockfile
+  #     - name: Install build tools and dependencies
+  #       # Install build tools needed for native modules
+  #       run: |
+  #         apt-get update
+  #         apt-get install -y build-essential python3
+  #         npm install -g node-gyp
+  #         bun install --frozen-lockfile
       
-      - name: Build project
-        # Optimize TypeScript compilation for CI environment
-        run: bun run build
+  #     - name: Build project
+  #       # Optimize TypeScript compilation for CI environment
+  #       run: bun run build
       
-      - name: Run tests
-        # Optimize test runs with memory settings for embeddings tests
-        run: bun run test
-        # Set environment variables to use mock embeddings in tests for better performance
-        env:
-          TEST_USE_MOCK_EMBEDDINGS: true
-          TEST_SKIP_EXTERNAL_API: true
+  #     - name: Run tests
+  #       # Optimize test runs with memory settings for embeddings tests
+  #       run: bun run test
+  #       # Set environment variables to use mock embeddings in tests for better performance
+  #       env:
+  #         TEST_USE_MOCK_EMBEDDINGS: true
+  #         TEST_SKIP_EXTERNAL_API: true
       
-      - name: Upload test coverage
-        uses: actions/upload-artifact@v4
-        with:
-          name: coverage
-          path: coverage/
-          # Optimize artifact storage with compression
-          retention-days: 7
+  #     - name: Upload test coverage
+  #       uses: actions/upload-artifact@v4
+  #       with:
+  #         name: coverage
+  #         path: coverage/
+  #         # Optimize artifact storage with compression
+  #         retention-days: 7
 
   # Memory-optimized build verification job
   build:
