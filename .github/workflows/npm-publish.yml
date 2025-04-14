@@ -113,13 +113,40 @@ jobs:
           bun install --frozen-lockfile
       
       - name: Build package
-        # Optimize TypeScript compilation for production
-        run: bun run build
+        # Optimize TypeScript compilation for production with explicit type declarations
+        run: |
+          # Use TypeScript directly to ensure proper declaration file generation
+          npx tsc --project tsconfig.production.json --declaration --declarationMap
       
       - name: Copy package files
         run: |
           echo "Preparing optimized package for npm..."
           cp README.md package.json ./dist/
+          
+          # Ensure typesVersions field is preserved
+          node -e "
+            const pkg = require('./package.json');
+            const distPkg = require('./dist/package.json');
+            distPkg.typesVersions = pkg.typesVersions;
+            require('fs').writeFileSync('./dist/package.json', JSON.stringify(distPkg, null, 2));
+          "
+          
+      - name: Verify type declarations
+        run: |
+          echo "Verifying type declarations..."
+          if [ ! -f ./dist/index.d.ts ]; then
+            echo "Error: index.d.ts not found!"
+            exit 1
+          fi
+          
+          # Check for key module type declarations
+          for dir in agent crew task tools memory llm flow; do
+            if [ ! -d ./dist/$dir ] || [ ! -f ./dist/$dir/index.d.ts ]; then
+              echo "Warning: Type declarations for $dir may be missing"
+            else
+              echo "✓ Found type declarations for $dir"
+            fi
+          done
           
       - name: Create bin directory
         run: mkdir -p ./dist/bin
