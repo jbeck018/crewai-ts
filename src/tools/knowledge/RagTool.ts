@@ -6,11 +6,7 @@
 
 import { z } from 'zod';
 import { createStructuredTool } from '../StructuredTool.js';
-import { KnowledgeChunk } from '../../knowledge/types.js';
-// Import directly from the module
-import '../../knowledge/KnowledgeBase.js';
-import { KnowledgeStorage } from '../../knowledge/storage/KnowledgeStorage.js';
-import { StringKnowledgeSource } from '../../knowledge/source/StringKnowledgeSource.js';
+import { KnowledgeChunk, KnowledgeStorage, StringKnowledgeSource } from '../../knowledge/index.js';
 
 // Input schema for RAG operations
 const ragInputSchema = z.object({
