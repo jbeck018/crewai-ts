@@ -1,12 +1,36 @@
 {
   "name": "crewai-ts",
-  "version": "0.1.95",
+  "version": "0.1.97",
   "description": "TypeScript port of crewAI for agent-based workflows",
   "type": "module",
   "exports": {
     ".": {
       "import": "./index.js",
       "types": "./index.d.ts"
+    },
+    "./agent": {
+      "import": "./agent/index.js",
+      "types": "./agent/index.d.ts"
+    },
+    "./crew": {
+      "import": "./crew/index.js",
+      "types": "./crew/index.d.ts"
+    },
+    "./task": {
+      "import": "./task/index.js",
+      "types": "./task/index.d.ts"
+    },
+    "./tools": {
+      "import": "./tools/index.js",
+      "types": "./tools/index.d.ts"
+    },
+    "./memory": {
+      "import": "./memory/index.js",
+      "types": "./memory/index.d.ts"
+    },
+    "./llm": {
+      "import": "./llm/index.js",
+      "types": "./llm/index.d.ts"
     },
     "./flow": {
       "import": "./flow/index.js",
@@ -19,6 +43,10 @@
     "./cli": {
       "import": "./cli/index.js",
       "types": "./cli/index.d.ts"
+    },
+    "./utils": {
+      "import": "./utils/index.js",
+      "types": "./utils/index.d.ts"
     }
   },
   "main": "./index.js",
@@ -28,6 +56,24 @@
       "*": [
         "./"
       ],
+      "agent": [
+        "./agent/index.d.ts"
+      ],
+      "crew": [
+        "./crew/index.d.ts"
+      ],
+      "task": [
+        "./task/index.d.ts"
+      ],
+      "tools": [
+        "./tools/index.d.ts"
+      ],
+      "memory": [
+        "./memory/index.d.ts"
+      ],
+      "llm": [
+        "./llm/index.d.ts"
+      ],
       "flow": [
         "./flow/index.d.ts"
       ],
@@ -36,6 +82,9 @@
       ],
       "cli": [
         "./cli/index.d.ts"
+      ],
+      "utils": [
+        "./utils/index.d.ts"
       ]
     }
   },
