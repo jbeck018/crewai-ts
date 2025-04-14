@@ -1,5 +1,5 @@
 import { describe, test, expect, beforeEach, afterEach, vi } from 'vitest';
-import { describe, test, expect, beforeEach, afterEach, mock } from '../vitest-utils.js';
+import { mock } from '../vitest-utils.js';
 import '../types';
 import { Knowledge } from '../../src/knowledge/Knowledge';
 import { KnowledgeStorage } from '../../src/knowledge/storage/KnowledgeStorage';
@@ -28,8 +28,11 @@ describe('Knowledge Integration', () => {
 
   // Set up test environment before each test with proper isolation
   beforeEach(() => {
-    // Create a mocked storage for faster tests
+    // Create a mocked storage for faster tests with optimized implementation
     mockStorage = new KnowledgeStorage({ collectionName: 'test-knowledge' });
+    
+    // Add a reset method to mockStorage for proper test cleanup
+    mockStorage.reset = vi.fn().mockImplementation(() => Promise.resolve());
     
     // Optimize by implementing a more intelligent mock that directly returns results
     // This improves test performance and reliability

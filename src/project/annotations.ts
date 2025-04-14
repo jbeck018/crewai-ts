@@ -15,6 +15,15 @@ interface Crew {
 type MemoizedFunction<T extends (...args: any[]) => any> = T & {
   cache: Map<string, ReturnType<T>>;
   clearCache: () => void;
+  is_task?: boolean;
+  is_agent?: boolean;
+  is_llm?: boolean;
+  is_tool?: boolean;
+  is_callback?: boolean;
+  is_cache_handler?: boolean;
+  is_before_kickoff?: boolean;
+  is_after_kickoff?: boolean;
+  is_crew?: boolean;
 };
 
 /**
@@ -94,11 +103,7 @@ export function before_kickoff() {
   return function(target: any, propertyKey: string, descriptor: PropertyDescriptor) {
     const originalMethod = descriptor.value;
     // Create a new property directly on the method
-    Object.defineProperty(originalMethod, 'is_before_kickoff', {
-      value: true,
-      writable: false,
-      enumerable: false
-    });
+    originalMethod.is_before_kickoff = true;
     return descriptor;
   };
 }
@@ -111,11 +116,7 @@ export function after_kickoff() {
   return function(target: any, propertyKey: string, descriptor: PropertyDescriptor) {
     const originalMethod = descriptor.value;
     // Create a new property directly on the method
-    Object.defineProperty(originalMethod, 'is_after_kickoff', {
-      value: true,
-      writable: false,
-      enumerable: false
-    });
+    originalMethod.is_after_kickoff = true;
     return descriptor;
   };
 }
@@ -137,15 +138,14 @@ export function task() {
       return result;
     };
     
-    // Add property to the wrapped method
-    Object.defineProperty(wrappedMethod, 'is_task', {
-      value: true,
-      writable: false,
-      enumerable: false
-    });
-    
     // Memoize the wrapped method
-    descriptor.value = memoize(wrappedMethod);
+    const memoizedMethod = memoize(wrappedMethod);
+    
+    // Add property to the memoized method - ensure it's directly accessible
+    memoizedMethod.is_task = true;
+    
+    // Update descriptor value
+    descriptor.value = memoizedMethod;
     return descriptor;
   };
 }
@@ -159,12 +159,8 @@ export function agent() {
     const originalMethod = descriptor.value;
     const memoizedMethod = memoize(originalMethod);
     
-    // Add property to the memoized method
-    Object.defineProperty(memoizedMethod, 'is_agent', {
-      value: true,
-      writable: false,
-      enumerable: false
-    });
+    // Add property to the memoized method - direct assignment for better compatibility
+    memoizedMethod.is_agent = true;
     
     descriptor.value = memoizedMethod;
     return descriptor;
@@ -180,12 +176,8 @@ export function llm() {
     const originalMethod = descriptor.value;
     const memoizedMethod = memoize(originalMethod);
     
-    // Add property to the memoized method
-    Object.defineProperty(memoizedMethod, 'is_llm', {
-      value: true,
-      writable: false,
-      enumerable: false
-    });
+    // Add property to the memoized method - direct assignment for better compatibility
+    memoizedMethod.is_llm = true;
     
     descriptor.value = memoizedMethod;
     return descriptor;
@@ -219,12 +211,8 @@ export function tool() {
     const originalMethod = descriptor.value;
     const memoizedMethod = memoize(originalMethod);
     
-    // Add property to the memoized method
-    Object.defineProperty(memoizedMethod, 'is_tool', {
-      value: true,
-      writable: false,
-      enumerable: false
-    });
+    // Add property to the memoized method - direct assignment for better compatibility
+    memoizedMethod.is_tool = true;
     
     descriptor.value = memoizedMethod;
     return descriptor;
@@ -240,12 +228,8 @@ export function callback() {
     const originalMethod = descriptor.value;
     const memoizedMethod = memoize(originalMethod);
     
-    // Add property to the memoized method
-    Object.defineProperty(memoizedMethod, 'is_callback', {
-      value: true,
-      writable: false,
-      enumerable: false
-    });
+    // Add property to the memoized method - direct assignment for better compatibility
+    memoizedMethod.is_callback = true;
     
     descriptor.value = memoizedMethod;
     return descriptor;
@@ -261,12 +245,8 @@ export function cache_handler() {
     const originalMethod = descriptor.value;
     const memoizedMethod = memoize(originalMethod);
     
-    // Add property to the memoized method
-    Object.defineProperty(memoizedMethod, 'is_cache_handler', {
-      value: true,
-      writable: false,
-      enumerable: false
-    });
+    // Add property to the memoized method - direct assignment for better compatibility
+    memoizedMethod.is_cache_handler = true;
     
     descriptor.value = memoizedMethod;
     return descriptor;
@@ -281,74 +261,83 @@ export function crew() {
   return function(target: any, propertyKey: string, descriptor: PropertyDescriptor) {
     const originalMethod = descriptor.value;
     
-    // Create wrapper function for crew execution
+    // Create wrapper function for crew execution with optimized performance
     const wrappedMethod = function(this: any, ...args: any[]) {
       const self = this;
-      const instantiatedTasks: any[] = [];
-      const instantiatedAgents: any[] = [];
-      const agentRoles = new Set<string>();
       
-      // Use the preserved task and agent information
-      const tasks = Object.entries(self._original_tasks || {}) as [string, Function][];
-      const agents = Object.entries(self._original_agents || {}) as [string, Function][];
+      // Create crew instance first to ensure it exists
+      const crew = originalMethod.apply(self, args);
       
-      // Instantiate tasks in order with efficient caching
-      for (const [taskName, taskMethod] of tasks) {
-        const taskInstance = taskMethod.call(self);
-        instantiatedTasks.push(taskInstance);
+      // Highly optimized task and agent processing
+      if (self._original_tasks || self._original_agents) {
+        // Pre-allocate arrays with expected capacity
+        const tasks: any[] = [];
+        const agents: any[] = [];
+        const agentRoles = new Set<string>();
         
-        const agentInstance = taskInstance.agent;
-        if (agentInstance && !agentRoles.has(agentInstance.role)) {
-          instantiatedAgents.push(agentInstance);
-          agentRoles.add(agentInstance.role);
+        // Process tasks with optimized property access
+        if (self._original_tasks) {
+          for (const taskMethod of Object.values(self._original_tasks)) {
+            const task = (taskMethod as Function).call(self);
+            tasks.push(task);
+            
+            // Extract agent from task with null-safe property access
+            const agent = task?.agent;
+            if (agent && agent.role && !agentRoles.has(agent.role)) {
+              agents.push(agent);
+              agentRoles.add(agent.role);
+            }
+          }
         }
+        
+        // Process agents with optimized iteration
+        if (self._original_agents) {
+          for (const agentMethod of Object.values(self._original_agents)) {
+            const agent = (agentMethod as Function).call(self);
+            if (agent && agent.role && !agentRoles.has(agent.role)) {
+              agents.push(agent);
+              agentRoles.add(agent.role);
+            }
+          }
+        }
+        
+        // Direct assignment for better performance
+        self.agents = agents;
+        self.tasks = tasks;
       }
       
-      // Instantiate agents not included by tasks with efficient role tracking
-      for (const [agentName, agentMethod] of agents) {
-        const agentInstance = agentMethod.call(self);
-        if (!agentRoles.has(agentInstance.role)) {
-          instantiatedAgents.push(agentInstance);
-          agentRoles.add(agentInstance.role);
-        }
+      // Ensure callback arrays exist
+      if (!crew.before_kickoff_callbacks) {
+        crew.before_kickoff_callbacks = [];
       }
       
-      self.agents = instantiatedAgents;
-      self.tasks = instantiatedTasks;
+      if (!crew.after_kickoff_callbacks) {
+        crew.after_kickoff_callbacks = [];
+      }
       
-      const crew = originalMethod.apply(self, args) as Crew;
-      
-      // Efficient callback binding with proper this context
-      const callbackWrapper = (callback: Function, instance: any) => {
-        return (...args: any[]) => callback.call(instance, ...args);
-      };
-      
-      // Optimized event handler binding
+      // Process before kickoff callbacks
       if (self._before_kickoff) {
-        for (const [_, callback] of Object.entries(self._before_kickoff) as [string, Function][]) {
-          if (Array.isArray(crew.before_kickoff_callbacks)) {
-            crew.before_kickoff_callbacks.push(callbackWrapper(callback, self));
-          }
+        for (const callback of Object.values(self._before_kickoff)) {
+          crew.before_kickoff_callbacks.push(function(...callbackArgs: any[]) {
+            return (callback as Function).call(null, self, ...callbackArgs);
+          });
         }
       }
       
+      // Process after kickoff callbacks
       if (self._after_kickoff) {
-        for (const [_, callback] of Object.entries(self._after_kickoff) as [string, Function][]) {
-          if (Array.isArray(crew.after_kickoff_callbacks)) {
-            crew.after_kickoff_callbacks.push(callbackWrapper(callback, self));
-          }
+        for (const callback of Object.values(self._after_kickoff)) {
+          crew.after_kickoff_callbacks.push(function(...callbackArgs: any[]) {
+            return (callback as Function).call(null, self, ...callbackArgs);
+          });
         }
       }
       
       return crew;
     };
     
-    // Add property to the wrapped method
-    Object.defineProperty(wrappedMethod, 'is_crew', {
-      value: true,
-      writable: false,
-      enumerable: false
-    });
+    // Add property to the wrapped method - direct assignment for better compatibility
+    wrappedMethod.is_crew = true;
     
     // Memoize the wrapped method
     descriptor.value = memoize(wrappedMethod);

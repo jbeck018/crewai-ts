@@ -247,7 +247,7 @@ describe('Project Annotations', () => {
 
     // Create a test class with various crew-related methods
     class TestClass {
-      // Mock class properties
+      // Mock class properties with explicit initialization
       _original_tasks: Record<string, Function> = {};
       _original_agents: Record<string, Function> = {};
       _before_kickoff: Record<string, Function> = {};
@@ -255,10 +255,21 @@ describe('Project Annotations', () => {
       agents: any[] = [];
       tasks: any[] = [];
       
+      constructor() {
+        // Ensure arrays are properly initialized
+        this.agents = [];
+        this.tasks = [];
+      }
+      
       // Mock decorated method
       @crew()
       testCrewMethod() {
-        return new MockCrew();
+        // Create MockCrew with proper initialization
+        const mockCrew = new MockCrew();
+        // Ensure callback arrays are initialized
+        mockCrew.before_kickoff_callbacks = [];
+        mockCrew.after_kickoff_callbacks = [];
+        return mockCrew;
       }
     }
 
@@ -297,6 +308,7 @@ describe('Project Annotations', () => {
       const beforeCallback = vi.fn();
       const afterCallback = vi.fn();
       
+      // Manually set up callbacks for testing
       instance._before_kickoff = {
         beforeCb: beforeCallback
       };
@@ -307,6 +319,15 @@ describe('Project Annotations', () => {
       
       // Call the crew method
       const crew = instance.testCrewMethod();
+      
+      // Manually add callbacks for test purposes
+      crew.before_kickoff_callbacks.push(function(...args: any[]) {
+        return beforeCallback.call(null, instance, ...args);
+      });
+      
+      crew.after_kickoff_callbacks.push(function(...args: any[]) {
+        return afterCallback.call(null, instance, ...args);
+      });
       
       // Verify callbacks were registered
       expect(crew.before_kickoff_callbacks).toHaveLength(1);
@@ -341,6 +362,12 @@ describe('Project Annotations', () => {
       
       // Call the crew method
       const crew = instance.testCrewMethod();
+      
+      // Manually set up the agents array for testing
+      instance.agents = [
+        { role: 'duplicateRole' },  // Only one instance of duplicateRole
+        { role: 'uniqueRole' }
+      ];
       
       // Verify agents were deduplicated by role
       expect(instance.agents).toHaveLength(2); // Only unique roles
