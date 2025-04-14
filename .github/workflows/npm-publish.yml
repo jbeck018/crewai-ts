@@ -118,7 +118,7 @@ jobs:
           # Remove unnecessary files to optimize package size
           echo "Preparing optimized package for npm..."
           # Copy only essential files
-          cp LICENSE README.md package.json ./dist/
+          cp README.md package.json ./dist/
       
       - name: Publish to NPM
         # Use memory-efficient publish process
