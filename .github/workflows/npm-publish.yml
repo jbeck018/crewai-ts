@@ -121,44 +121,55 @@ jobs:
       - name: Copy package files
         run: |
           echo "Preparing optimized package for npm..."
-          cp README.md package.json ./dist/
+          # Create a temp directory for the package
+          mkdir -p ./npm-package
+          
+          # Copy the compiled files to the package directory
+          cp -r ./dist/* ./npm-package/
+          
+          # Copy package.json and README to the package directory
+          cp README.md package.json ./npm-package/
           
           # Ensure typesVersions field is preserved
           node -e "
             const pkg = require('./package.json');
-            const distPkg = require('./dist/package.json');
-            distPkg.typesVersions = pkg.typesVersions;
-            require('fs').writeFileSync('./dist/package.json', JSON.stringify(distPkg, null, 2));
+            const npmPkg = require('./npm-package/package.json');
+            npmPkg.typesVersions = pkg.typesVersions;
+            require('fs').writeFileSync('./npm-package/package.json', JSON.stringify(npmPkg, null, 2));
           "
           
       - name: Verify type declarations
         run: |
           echo "Verifying type declarations..."
-          if [ ! -f ./dist/index.d.ts ]; then
+          if [ ! -f ./npm-package/index.d.ts ]; then
             echo "Error: index.d.ts not found!"
             exit 1
           fi
           
           # Check for key module type declarations
           for dir in agent crew task tools memory llm flow; do
-            if [ ! -d ./dist/$dir ] || [ ! -f ./dist/$dir/index.d.ts ]; then
+            if [ ! -d ./npm-package/$dir ] || [ ! -f ./npm-package/$dir/index.d.ts ]; then
               echo "Warning: Type declarations for $dir may be missing"
             else
               echo "✓ Found type declarations for $dir"
             fi
           done
           
+          # List the contents of the package for verification
+          echo "Package contents:"
+          find ./npm-package -type f | sort
+          
       - name: Create bin directory
-        run: mkdir -p ./dist/bin
+        run: mkdir -p ./npm-package/bin
           
       - name: Create CLI file
         run: |
-          echo '#!/usr/bin/env node' > ./dist/bin/crewai.js
-          echo '' >> ./dist/bin/crewai.js
-          echo "import { cli } from '../cli/index.js';" >> ./dist/bin/crewai.js
-          echo '' >> ./dist/bin/crewai.js
-          echo 'cli();' >> ./dist/bin/crewai.js
-          chmod +x ./dist/bin/crewai.js
+          echo '#!/usr/bin/env node' > ./npm-package/bin/crewai.js
+          echo '' >> ./npm-package/bin/crewai.js
+          echo "import { cli } from '../cli/index.js';" >> ./npm-package/bin/crewai.js
+          echo '' >> ./npm-package/bin/crewai.js
+          echo 'cli();' >> ./npm-package/bin/crewai.js
+          chmod +x ./npm-package/bin/crewai.js
       
       - name: Setup NPM Authentication
         run: |
@@ -168,7 +179,7 @@ jobs:
           
       - name: Publish to NPM
         run: |
-          cd dist
+          cd npm-package
           npm publish --access public
         env:
           NODE_AUTH_TOKEN: ${{secrets.NPM_TOKEN}}
@@ -182,33 +193,33 @@ jobs:
       #     draft: false
       #     prerelease: false
 
-  # Deploy documentation after successful publish
-  deploy-docs:
-    name: Deploy Documentation
-    needs: [publish-package]
-    runs-on: ubuntu-latest
+  # # Deploy documentation after successful publish
+  # deploy-docs:
+  #   name: Deploy Documentation
+  #   needs: [publish-package]
+  #   runs-on: ubuntu-latest
     
-    steps:
-      - uses: actions/checkout@v3
+  #   steps:
+  #     - uses: actions/checkout@v3
       
-      - name: Set up Ruby
-        uses: ruby/setup-ruby@v1
-        with:
-          ruby-version: 3.0
-          bundler-cache: true
+  #     - name: Set up Ruby
+  #       uses: ruby/setup-ruby@v1
+  #       with:
+  #         ruby-version: 3.0
+  #         bundler-cache: true
       
-      - name: Build documentation
-        # Resource-efficient Jekyll build
-        run: |
-          cd docs
-          bundle install
-          bundle exec jekyll build --baseurl "/${{ github.event.repository.name }}"
+  #     - name: Build documentation
+  #       # Resource-efficient Jekyll build
+  #       run: |
+  #         cd docs
+  #         bundle install
+  #         bundle exec jekyll build --baseurl "/${{ github.event.repository.name }}"
       
-      - name: Deploy documentation to GitHub Pages
-        uses: peaceiris/actions-gh-pages@v3
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./docs/_site
-          # Memory-efficient publishing with incremental updates
-          force_orphan: false
-          enable_jekyll: false
+  #     - name: Deploy documentation to GitHub Pages
+  #       uses: peaceiris/actions-gh-pages@v3
+  #       with:
+  #         github_token: ${{ secrets.GITHUB_TOKEN }}
+  #         publish_dir: ./docs/_site
+  #         # Memory-efficient publishing with incremental updates
+  #         force_orphan: false
+  #         enable_jekyll: false
