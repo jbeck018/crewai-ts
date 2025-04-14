@@ -7,7 +7,7 @@
         "chalk": "^5.4.1",
         "commander": "^13.1.0",
         "gpt-tokenizer": "^2.9.0",
-        "jsdom": "^26.0.0",
+        "jsdom": "^26.1.0",
         "mysql2": "^3.14.0",
         "openai": "^4.93.0",
         "ora": "^8.2.0",
@@ -17,7 +17,7 @@
       },
       "devDependencies": {
         "@types/jest": "^29.5.14",
-        "@types/node": "^22.14.0",
+        "@types/node": "^22.14.1",
         "@types/pg": "^8.11.12",
         "@types/uuid": "^10.0.0",
         "@typescript-eslint/eslint-plugin": "^6.21.0",
@@ -26,8 +26,7 @@
         "bundlesize": "^0.18.2",
         "eslint": "^8.57.1",
         "expect": "^29.7.0",
-        "husky": "^8.0.3",
-        "lint-staged": "^15.5.0",
+        "lint-staged": "^15.5.1",
         "prettier": "^3.5.3",
         "typescript": "^5.8.3",
         "vis-network": "^9.1.9",
@@ -519,8 +518,6 @@
     "human-signals": ["human-signals@5.0.0", "", {}, "sha512-AXcZb6vzzrFAUE61HnN4mpLqd/cSIwNQjtNWR0euPm6y0iqx3G4gOXaIDdtdDwZmhwe82LA6+zinmW4UBWVePQ=="],
 
     "humanize-ms": ["humanize-ms@1.2.1", "", { "dependencies": { "ms": "^2.0.0" } }, "sha512-Fl70vYtsAFb/C06PTS9dZBo7ihau+Tu/DNCk/OyHhea07S+aeMWpFFkUaXRa8fI+ScZbEI8dfSxwY7gxZ9SAVQ=="],
-
-    "husky": ["husky@8.0.3", "", { "bin": { "husky": "lib/bin.js" } }, "sha512-+dQSyqPh4x1hlO1swXBiNb2HzTDN1I2IGLQx1GrBuiqFJfoMrnZWwVmatvSiO+Iz8fBUnf+lekwNo4c2LlXItg=="],
 
     "iconv-lite": ["iconv-lite@0.6.3", "", { "dependencies": { "safer-buffer": ">= 2.1.2 < 3.0.0" } }, "sha512-4fCk79wshMdzMp2rH06qWrJE4iolqLhCUH+OiuIgU++RB0+94NlDL81atO7GX55uUKueo0txHNtvEyI6D7WdMw=="],
 

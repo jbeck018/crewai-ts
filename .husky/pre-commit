@@ -1,6 +1,0 @@
-#!/usr/bin/env sh
-. "$(dirname -- "$0")/_/husky.sh"
-
-# Memory optimization: Only run lint-staged on changed files
-# This reduces memory usage by only processing modified files
-bun run pre-commit
