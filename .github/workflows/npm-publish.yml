@@ -92,13 +92,17 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '21'
+          registry-url: 'https://registry.npmjs.org/'
+      
       - name: Set up Bun
         uses: oven-sh/setup-bun@v1
         with:
           bun-version: latest
-          registry-url: 'https://registry.npmjs.org'
-          # Optimize with token authentication
-          always-auth: true
+          cache: true
         
       - name: Install build tools and dependencies
         # Install build tools needed for native modules
@@ -112,16 +116,30 @@ jobs:
         # Optimize TypeScript compilation for production
         run: bun run build
       
-      - name: Prepare package for publishing
-        # Create a clean package with optimized contents
+      - name: Copy package files
         run: |
-          # Remove unnecessary files to optimize package size
           echo "Preparing optimized package for npm..."
-          # Copy only essential files
           cp README.md package.json ./dist/
+          
+      - name: Create bin directory
+        run: mkdir -p ./dist/bin
+          
+      - name: Create CLI file
+        run: |
+          echo '#!/usr/bin/env node' > ./dist/bin/crewai.js
+          echo '' >> ./dist/bin/crewai.js
+          echo "import { cli } from '../cli/index.js';" >> ./dist/bin/crewai.js
+          echo '' >> ./dist/bin/crewai.js
+          echo 'cli();' >> ./dist/bin/crewai.js
+          chmod +x ./dist/bin/crewai.js
       
+      - name: Setup NPM Authentication
+        run: |
+          echo "//registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}" > ~/.npmrc
+        env:
+          NODE_AUTH_TOKEN: ${{secrets.NPM_TOKEN}}
+          
       - name: Publish to NPM
-        # Use memory-efficient publish process
         run: |
           cd dist
           npm publish --access public
