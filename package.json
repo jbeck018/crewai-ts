@@ -1,6 +1,6 @@
 {
   "name": "crewai-ts",
-  "version": "0.1.92",
+  "version": "0.1.93",
   "description": "TypeScript port of crewAI for agent-based workflows",
   "type": "module",
   "exports": {
@@ -25,14 +25,22 @@
   "types": "./index.d.ts",
   "typesVersions": {
     "*": {
-      "*": ["./"],
-      "flow": ["./flow/index.d.ts"],
-      "flow/decorators": ["./flow/decorators.d.ts"],
-      "cli": ["./cli/index.d.ts"]
+      "*": [
+        "./"
+      ],
+      "flow": [
+        "./flow/index.d.ts"
+      ],
+      "flow/decorators": [
+        "./flow/decorators.d.ts"
+      ],
+      "cli": [
+        "./cli/index.d.ts"
+      ]
     }
   },
   "bin": {
-    "crewai": "./bin/crewai.js"
+    "crewai": "bin/crewai.js"
   },
   "files": [
     "dist",
