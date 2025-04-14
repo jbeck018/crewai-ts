@@ -1,6 +1,6 @@
 {
   "name": "crewai-ts",
-  "version": "0.1.7",
+  "version": "0.1.8",
   "description": "TypeScript port of crewAI for agent-based workflows",
   "type": "module",
   "exports": {
@@ -23,15 +23,24 @@
   },
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
+  "typesVersions": {
+    "*": {
+      "*": ["./dist/*"],
+      "flow": ["./dist/flow/index.d.ts"],
+      "flow/decorators": ["./dist/flow/decorators.d.ts"],
+      "cli": ["./dist/cli/index.d.ts"]
+    }
+  },
   "bin": {
     "crewai": "./bin/crewai.js"
   },
   "files": [
     "dist",
-    "bin"
+    "bin",
+    "src"
   ],
   "scripts": {
-    "build": "tsc",
+    "build": "tsc --declaration --declarationMap",
     "build:analyze": "tsc && npx bundlesize",
     "build:production": "tsc --project tsconfig.production.json",
     "dev": "tsc --watch",

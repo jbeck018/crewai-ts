@@ -4,10 +4,11 @@
     "sourceMap": false,
     "inlineSources": false,
     "declaration": true,
-    "declarationMap": false,
-    "removeComments": true,
+    "declarationMap": true,
+    "removeComments": false,
     "incremental": false,
-    "skipLibCheck": true
+    "skipLibCheck": true,
+    "emitDeclarationOnly": false
   },
   "exclude": [
     "**/*.test.ts",

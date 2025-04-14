@@ -4,7 +4,12 @@
  */
 
 // Core exports - use selective exports to avoid duplicates
+import { Agent, AgentConfig } from './agent/index.js';
+export { Agent, AgentConfig };
 export * from './agent/index.js';
+
+import { Crew, CrewConfig } from './crew/index.js';
+export { Crew, CrewConfig };
 export * from './crew/index.js';
 
 // Export task components selectively to avoid duplication
@@ -34,5 +39,5 @@ export { FlowDecorators };
 // Define override type locally instead of importing from external module
 export type override = 'override';
 
-// Version info
-export const VERSION = '0.1.0';
+// Export core types explicitly to ensure they're included in the package
+export * from './types/core.js';
